@@ -1,0 +1,24 @@
+{
+  "hair": [
+    "ulpc",
+    "lpcr"
+  ],
+  "metal": [
+    "lpcr",
+    "ulpc"
+  ],
+  "eye": [
+    "lpcr",
+    "ulpc"
+  ],
+  "body": [
+    "ulpc",
+    "lpcr"
+  ],
+  "cloth": [
+    "ulpc"
+  ],
+  "all": [
+    "lpcr"
+  ]
+}
