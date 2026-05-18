@@ -110,7 +110,7 @@ export class CharacterCollection extends ItemCollection {
     }
 
     private isAnimationDisabledForCharacter(animation: string) {
-        for (const type of ['anatomy', 'clothing']) {
+        for (const type of ['anatomy', 'clothes']) {
             for (const category in this.selected[type]) {
                 if (!this.selected[type][category]) {
                     continue
