@@ -237,16 +237,23 @@ def main():
             if type_name not in packed[v_type]:
                 packed[v_type][type_name] = {}
                 
-            # Animation mapping
+            # Animation mapping and verification
             raw_anims = data.get('animations', [])
-            poses = []
-            for a in raw_anims:
-                if a in SKIP_ANIMATIONS: continue
-                if a in ANIMATION_MAPPING:
-                    poses.append(ANIMATION_MAPPING[a])
-                else:
-                    poses.append(a)
             
+            def filter_poses(item_path):
+                valid_poses = []
+                for a in raw_anims:
+                    if a in SKIP_ANIMATIONS: continue
+                    
+                    # Check if file exists (either a.png or something from ANIMATION_MAPPING)
+                    # For bodies, path is sub_path. For regular, it's base_path.
+                    if os.path.exists(os.path.join(INPUT_SPRITES, item_path, f"{a}.png")):
+                        if a in ANIMATION_MAPPING:
+                            valid_poses.append(ANIMATION_MAPPING[a])
+                        else:
+                            valid_poses.append(a)
+                return valid_poses
+
             # Recolor mapping
             recolors = data.get('recolors', {})
             material_cat = recolors.get('material', 'all')
@@ -260,11 +267,7 @@ def main():
             default_color = "white"
             if material_cat == "body": default_color = "ivory"
             elif material_cat == "hair": default_color = "black"
-            
-            # Check for multiple layers or conditions
-            # Universal usually has layer_1, layer_2, etc.
-            layers = {}
-            
+
             # For body, we might need to split it
             if type_name == "body" and "layer_1" in data and isinstance(data["layer_1"], dict) and "male" in data["layer_1"]:
                 # Split into male, female, etc.
@@ -272,6 +275,9 @@ def main():
                     if body_type in data["layer_1"]:
                         item_id = f"{v_type}.{type_name}.{body_type}"
                         sub_path = data["layer_1"][body_type].rstrip('/')
+                        
+                        # Filter poses for this specific body type
+                        body_poses = filter_poses(sub_path)
                         
                         # Find credits for this specific file
                         item_credits = {"authors": [], "licenses": [], "urls": [], "notes": ""}
@@ -285,14 +291,14 @@ def main():
                                 }
                                 break
                         
-                        packed[v_type][type_name][f"{type_name}.{body_type}"] = {
+                        packed[v_type][type_name][body_type] = {
                             "id": item_id,
                             "name": f"{body_type.title()} Body",
                             "path": sub_path,
                             "group": type_name,
                             "actAs": None,
                             "layers": { "fg": { "z": data["layer_1"].get('zPos', 10) } },
-                            "poses": poses,
+                            "poses": body_poses,
                             "materials": materials,
                             "colors": { "primary": default_color },
                             "preview": get_preview_image(sub_path, raw_anims, type_name),
@@ -308,6 +314,7 @@ def main():
             # Base path - try to find common prefix in layers
             base_path = ""
             conditions = {}
+            layers = {}
             
             l1 = data.get('layer_1', {})
             if isinstance(l1, dict):
@@ -319,7 +326,6 @@ def main():
                         # Path is like "legs/cuffed/male/"
                         p = l1[bt].rstrip('/')
                         # Common part? 
-                        # For simplicity, we'll set base_path to the parent of the first one
                         if not base_path:
                             base_path = os.path.dirname(p)
                         
@@ -340,6 +346,19 @@ def main():
                          base_path = l1.rstrip('/')
                     layers["fg"] = { "z": l1.get('zPos', 20) }
             
+            # For regular items, we'll check existence relative to base_path if no conditions,
+            # or just assume the first condition is representative for simplicity.
+            # Ideally we'd check ALL conditions, but that's complex.
+            check_path = base_path
+            if conditions:
+                 # Take the first condition's full path
+                 first_bt = next(iter(conditions)) # anatomy.body.male
+                 bt_slug = first_bt.split('.')[-1]
+                 if bt_slug in l1:
+                      check_path = l1[bt_slug].rstrip('/')
+
+            item_poses = filter_poses(check_path)
+
             # Credits
             item_credits = {"authors": [], "licenses": [], "urls": [], "notes": ""}
             if data.get('credits'):
@@ -359,7 +378,7 @@ def main():
                 "group": type_name,
                 "actAs": None,
                 "layers": layers,
-                "poses": poses,
+                "poses": item_poses,
                 "materials": materials,
                 "colors": { "primary": default_color },
                 "preview": get_preview_image(base_path, raw_anims, type_name),
