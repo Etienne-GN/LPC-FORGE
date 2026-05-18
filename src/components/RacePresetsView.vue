@@ -106,10 +106,10 @@ const applyRace = async (race: RacePreset) => {
         <div class="bg-slate-900 p-6 rounded-lg border border-slate-700 flex flex-col gap-4">
             <h3 class="text-slate-200 font-bold border-b border-slate-700 pb-2">Actions</h3>
             <div class="grid grid-cols-2 gap-4">
-                <ui-button @click="applyRace(selectedRace)" ui="primary" class="w-full h-12" icon="check">Apply Preset</ui-button>
-                <ui-button @click="updateRace" ui="secondary" class="w-full h-12" icon="content-save">Update from Character</ui-button>
+                <ui-button @click="applyRace(selectedRace)" ui="primary" class="w-full h-12" icon="check" title="Apply Preset">Apply Preset</ui-button>
+                <ui-button @click="updateRace" ui="secondary" class="w-full h-12" icon="content-save" title="Update from Character">Update from Character</ui-button>
             </div>
-            <ui-button @click="deleteRace(selectedRace.id)" ui="danger" class="w-full mt-4" icon="delete">Delete Race</ui-button>
+            <ui-button @click="deleteRace(selectedRace.id)" ui="danger" class="w-full mt-4" icon="delete" title="Delete Race">Delete Race</ui-button>
         </div>
 
         <div class="flex flex-col gap-2">
