@@ -269,11 +269,13 @@ def main():
             elif material_cat == "hair": default_color = "black"
 
             # For body, we might need to split it
-            if type_name == "body" and "layer_1" in data and isinstance(data["layer_1"], dict) and "male" in data["layer_1"]:
+            if type_name == "body" and isinstance(data.get("layer_1"), dict) and any(bt in data["layer_1"] for bt in ["male", "female", "muscular", "pregnant", "teen", "child"]):
                 # Split into male, female, etc.
+                is_base_body = (file == "body.json")
                 for body_type in ["male", "female", "muscular", "pregnant", "teen", "child"]:
                     if body_type in data["layer_1"]:
-                        item_id = f"{v_type}.{type_name}.{body_type}"
+                        item_slug = body_type if is_base_body else f"{file.replace('.json', '')}_{body_type}"
+                        item_id = f"{v_type}.{type_name}.{item_slug}"
                         sub_path = data["layer_1"][body_type].rstrip('/')
                         
                         # Filter poses for this specific body type
@@ -291,12 +293,12 @@ def main():
                                 }
                                 break
                         
-                        packed[v_type][type_name][body_type] = {
+                        packed[v_type][type_name][item_slug] = {
                             "id": item_id,
-                            "name": f"{body_type.title()} Body",
+                            "name": f"{body_type.title()} Body" if is_base_body else f"{data.get('name', item_slug.title())} ({body_type.title()})",
                             "path": sub_path,
                             "group": type_name,
-                            "actAs": None,
+                            "actAs": f"anatomy.body.{body_type}" if not is_base_body else None,
                             "layers": { "fg": { "z": data["layer_1"].get('zPos', 10) } },
                             "poses": body_poses,
                             "materials": materials,
