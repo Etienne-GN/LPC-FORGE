@@ -4,6 +4,7 @@ import {type Ref, ref, watch} from 'vue'
 import UiDropdown from "@/components/ui/Dropdown.vue";
 import type {ItemCollection} from "@/types/ItemCollection";
 import type {Item} from "@/types/Item";
+import type {Color} from "@/types/Color";
 
 const props = defineProps<{
   type: string,
@@ -12,43 +13,39 @@ const props = defineProps<{
   collection: ItemCollection
 }>()
 
-const emit = defineEmits(['selected', 'toggle-color-selector'])
+const emit = defineEmits(['selected'])
 
-const selected: Ref<Item> = ref(props.collection.getSelected(props.type)) as Ref<Item>;
+const selected: Ref<Item> = ref(props.collection.getSelected(props.type)) as Ref<Item>
 
-function openColorSelector(material:string) {
-  emit('toggle-color-selector', selected.value, material)
+// ── color picker state ───────────────────────────────────────────────────────
+const pickerMaterial = ref<string>('')
+
+function togglePicker(material: string) {
+  pickerMaterial.value = pickerMaterial.value === material ? '' : material
 }
 
-async function onSelectionChanged(event:any) {
-  if (event.target.value) {
-    selected.value = await props.collection.select(event.target.value)
-  } else {
-    props.collection.unselect(props.type);
-    selected.value = props.collection.getSelected(props.type) as Item;
-  }
-  emit("selected", selected);
+function closePicker() {
+  pickerMaterial.value = ''
 }
 
-function getColor(material: any) {
-  const c = selected.value.colors.find(selected.value.colors.getCurrent(material))?.palette[2];
-
-  if(!c) {
-    return ''
-  }
-
-  return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+function currentMaterialDef() {
+  if (!selected.value || !pickerMaterial.value) return null
+  return selected.value.materials[pickerMaterial.value] ?? null
 }
 
-function isLast(index: number) {
-  return index == Object.keys(selected.value.materials).length - 1;
+function isShown(color: Color, palette: string): boolean {
+  return color.materials.indexOf(palette) >= 0
 }
 
-function hasNoColors() {
-  return !selected.value || !selected.value.id ||
-    (Object.keys(selected.value.materials).length == 0 && !selected.value.variants?.length)
+async function onColorSelected(colorKey: string) {
+  if (!selected.value) return
+  selected.value.colors.set(pickerMaterial.value, colorKey)
+  await props.collection.select(selected.value)
+  emit('selected', selected)
+  closePicker()
 }
 
+// ── variant state ────────────────────────────────────────────────────────────
 const VARIANT_CSS: {[key: string]: string} = {
   black: '#1a1a1a', charcoal: '#3c3c3c', shadow: '#4a4a5a', soot: '#2a2a2a',
   gray: '#888', silver: '#bbb', smoke: '#ccc', dove: '#d8d8d8', white: '#f0f0f0',
@@ -68,12 +65,10 @@ const VARIANT_CSS: {[key: string]: string} = {
   brown: '#553311', leather: '#8b5a2b', walnut: '#5c4033', chocolate: '#7b3f00',
   umber: '#635147', sepia: '#704214', tan: '#d2b48c', beige: '#f5f0d7',
   linen: '#faf0e6', peach: '#ffc8a2', apricot: '#fbceb1', salmon: '#fa8072',
-  oak: '#806040', ash_brown: '#7d6a57',
-  bluegray: '#6a8ba4', slate: '#708090', fog: '#c4c9d4',
-  maroon2: '#800000', forest2: '#228b22',
+  oak: '#806040', ash_brown: '#7d6a57', bluegray: '#6a8ba4', slate: '#708090',
 }
 
-function variantSwatchColor(v: string): string {
+function variantCss(v: string): string {
   return VARIANT_CSS[v] ?? '#777'
 }
 
@@ -84,8 +79,15 @@ async function onVariantSelect(variant: string) {
   emit('selected', selected)
 }
 
-function hasOptions() {
-  return Object.keys(getOptions()).length > 0;
+// ── shared helpers ───────────────────────────────────────────────────────────
+function swatchColor(material: any) {
+  const c = selected.value.colors.find(selected.value.colors.getCurrent(material))?.palette[2]
+  return c ? `rgb(${c[0]},${c[1]},${c[2]})` : ''
+}
+
+function hasNoSwatches() {
+  return !selected.value || !selected.value.id ||
+    (Object.keys(selected.value.materials).length === 0 && !selected.value.variants?.length)
 }
 
 function getOptions() {
@@ -93,62 +95,83 @@ function getOptions() {
 }
 
 async function onSelect(itemId: string) {
+  closePicker()
   if (itemId) {
     selected.value = await props.collection.select(itemId)
   } else {
-    props.collection.unselect(props.type);
-    selected.value = props.collection.getSelected(props.type) as Item;
+    props.collection.unselect(props.type)
+    selected.value = props.collection.getSelected(props.type) as Item
   }
-
-  emit("selected", selected);
+  emit('selected', selected)
 }
 
 watch(() => props.refresh, () => {
-  selected.value = props.collection.getSelected(props.type) as Item;
+  selected.value = props.collection.getSelected(props.type) as Item
 })
-
 </script>
 
 <template>
   <div v-if="Object.keys(getOptions()).length > 0">
     <h2 class="text-xs text-zinc-400 font-bold">{{ title }}</h2>
-    <div class="flex my-2">
+
+    <div class="flex my-1">
       <ui-dropdown @selected="onSelect" :selected="collection.getSelected(type)" :options="getOptions()" :type="type"
-                   :class="{'rounded-r': hasNoColors()}"></ui-dropdown>
+                   :class="{'rounded-r': hasNoSwatches()}"></ui-dropdown>
+
       <template v-if="selected">
-        <!-- runtime-recolorable items: palette color buttons -->
-        <button @click="openColorSelector(key as string)" :title="value.name" class="min-w-8 w-8 bg-zinc-700 p-1"
-                :class="{ 'rounded-r': isLast(index) }" v-for="(value, key, index) in selected.materials">
-          <div class="h-full rounded align-center" :style="{ backgroundColor: getColor(key)}"></div>
+        <!-- runtime-recolorable: one swatch per material -->
+        <button v-for="(matDef, matKey, index) in selected.materials"
+                :key="matKey"
+                @click="togglePicker(matKey as string)"
+                :title="matDef.name"
+                class="min-w-8 w-8 p-1 bg-zinc-700"
+                :class="{
+                  'rounded-r': index === Object.keys(selected.materials).length - 1 && !selected.variants?.length,
+                  'bg-zinc-500': pickerMaterial === matKey
+                }">
+          <div class="h-full rounded" :style="{ backgroundColor: swatchColor(matKey) }"></div>
         </button>
-        <!-- pre-colored variant items: variant swatch buttons -->
+
+        <!-- pre-colored variants: one tiny swatch per variant -->
         <template v-if="selected.variants && selected.variants.length > 1">
           <button v-for="(v, i) in selected.variants" :key="v"
                   @click="onVariantSelect(v)" :title="v"
                   class="min-w-5 w-5 p-0.5 bg-zinc-700"
-                  :class="{ 'rounded-r': i === selected.variants.length - 1, 'ring-1 ring-amber-400': selected.variant === v }">
-            <div class="h-full w-full rounded" :style="{ backgroundColor: variantSwatchColor(v) }"></div>
+                  :class="{ 'rounded-r': i === selected.variants.length - 1,
+                             'outline outline-1 outline-amber-400': selected.variant === v }">
+            <div class="h-full w-full rounded" :style="{ backgroundColor: variantCss(v) }"></div>
           </button>
         </template>
       </template>
     </div>
 
-    <div v-if="false" class="flex my-2">
-      <select @change="onSelectionChanged($event)"
-              class="bg-zinc-700 text-zinc-300 flex-grow p-2 rounded-l truncate w-full"
-              :class="{'rounded-r': hasNoColors()}" id="">
-        <option value="">Select...</option>
-        <option v-for="value in getOptions()" :value="value.id" :selected="value.id == selected.id">{{ value.name }}
-        </option>
-      </select>
-
-      <template v-if="selected">
-        <button @click="openColorSelector(key as string)" :title="value.name" class="min-w-8 w-8 bg-zinc-700 p-1"
-                :class="{ 'rounded-r': isLast(index) }" v-for="(value, key, index) in selected.materials">
-          <div class="h-full rounded align-center" :style="{ backgroundColor: getColor(key)}"></div>
+    <!-- inline color picker menu, opens below the row -->
+    <div v-if="pickerMaterial && currentMaterialDef()"
+         class="mb-2 rounded border border-zinc-600 bg-zinc-800 text-zinc-200 text-xs overflow-hidden">
+      <div class="flex items-center px-2 py-1 bg-zinc-700 border-b border-zinc-600">
+        <span class="font-bold flex-grow">{{ currentMaterialDef()?.name }}</span>
+        <button @click="closePicker" class="text-zinc-400 hover:text-zinc-100 ml-2">
+          <i class="mdi mdi-close"></i>
         </button>
-      </template>
-
+      </div>
+      <div class="max-h-52 overflow-y-auto scrollbar-thin">
+        <template v-for="palette in currentMaterialDef()?.palettes" :key="palette">
+          <template v-for="(colorVal, colorKey) in collection.colors.getAll()" :key="colorKey">
+            <div v-if="isShown(colorVal, palette)"
+                 class="flex items-center px-2 py-1 cursor-pointer hover:bg-zinc-600"
+                 :class="{ 'bg-zinc-600': selected?.colors?.getCurrent(pickerMaterial) === colorKey }"
+                 @click="onColorSelected(colorKey as string)">
+              <span class="flex-grow">{{ colorVal.name }}</span>
+              <div class="grid grid-cols-6 w-24 h-4 flex-shrink-0">
+                <div v-for="(shade, si) in colorVal.palette" :key="si"
+                     :class="{ 'rounded-l': si===0, 'rounded-r': si===colorVal.palette.length-1 }"
+                     :style="{ backgroundColor: `rgb(${shade[0]},${shade[1]},${shade[2]})` }"></div>
+              </div>
+            </div>
+          </template>
+        </template>
+      </div>
     </div>
+
   </div>
 </template>

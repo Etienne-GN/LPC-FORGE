@@ -6,26 +6,21 @@ import SpriteSelect from "@/components/common/SpriteSelect.vue";
 
 const props = defineProps<{
   refresh: any
-  hidden: boolean,
   tab: string,
   collection: any
 }>()
 
-const emit = defineEmits(['selected', 'toggle-color-selector'])
+const emit = defineEmits(['selected'])
 
 function onSpriteSelected(selected:Item) {
   emit('selected', selected)
-}
-
-function onToggleColorSelector(selected:Item, material:string) {
-  emit('toggle-color-selector', selected, material)
 }
 
 const data:any = props.collection.getSpriteCategories();
 </script>
 
 <template>
-  <div class="p-2 flex-grow" :class="{hidden: hidden}">
+  <div class="p-2 flex-grow">
     <div v-for="(value, index) of data" :class="{hidden: tab != index.toString()}">
       <template v-if="value.tabs">
         <div class="grid grid-cols-4 text-center text-zinc-200 font-bold my-1">
@@ -35,13 +30,13 @@ const data:any = props.collection.getSpriteCategories();
         </div>
         <div v-for="(tab, tabIndex) of value.tabs" :class="{hidden: value.active.value != tabIndex}">
           <sprite-select v-for="(category) of tab.children" @selected="onSpriteSelected"
-                         @toggle-color-selector="onToggleColorSelector" :refresh="refresh"
+                         :refresh="refresh"
                          :collection="collection" :title="category.title" :type="category.type"></sprite-select>
         </div>
       </template>
       <template v-if="!value.tabs">
         <sprite-select v-for="(category) of value.children" @selected="onSpriteSelected"
-                       @toggle-color-selector="onToggleColorSelector" :refresh="refresh"
+                       :refresh="refresh"
                        :collection="collection" :title="category.title" :type="category.type"></sprite-select>
       </template>
     </div>
