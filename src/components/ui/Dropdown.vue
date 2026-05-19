@@ -81,7 +81,7 @@ window.addEventListener('click', closeDropdownOnOutsideClick);
 </script>
 
 <template>
-  <div ref="dropdownLabel" :id="'select-' + type.replace('.', '-')" class="relative inline-block cursor-pointer bg-slate-700 text-slate-300 w-full overflow-visible" :class="{'rounded-bl': position == 'top' && isDropdownOpen, 'rounded-tl': position == 'bottom' && isDropdownOpen, 'rounded-l': !isDropdownOpen}">
+  <div ref="dropdownLabel" :id="'select-' + type.replace('.', '-')" class="relative inline-block cursor-pointer bg-zinc-700 text-zinc-300 w-full overflow-visible" :class="{'rounded-bl': position == 'top' && isDropdownOpen, 'rounded-tl': position == 'bottom' && isDropdownOpen, 'rounded-l': !isDropdownOpen}">
     <div @click="toggleDropdown" class="p-1.5 flex">
       <div class="grow select-none">
         {{(selected && selected.id) ? selected.name : 'Select...'}}
@@ -89,20 +89,20 @@ window.addEventListener('click', closeDropdownOnOutsideClick);
       <div class="justify-self-end"><i class="mdi mdi-menu-down"></i></div>
     </div>
 
-    <ul ref="dropdownList" class="z-10 list-none p-0 m-0 absolute w-full bg-slate-600 overflow-y-scroll scrollbar-thin max-h-96 divide-y divide-slate-700" :class="{hidden: !isDropdownOpen, 'top-full': position == 'bottom', 'bottom-auto': position == 'bottom', 'top-auto': position == 'top', 'bottom-full': position == 'top', 'rounded-b': position == 'bottom', 'rounded-t': position == 'top'}">
-      <li class="bg-slate-600 flex" v-if="false && position == 'bottom' && isDropdownOpen">
-        <input v-model="filterText" class="w-full p-2 m-2 rounded bg-slate-500" placeholder="Search...">
+    <ul ref="dropdownList" class="z-10 list-none p-0 m-0 absolute w-full bg-zinc-600 overflow-y-scroll scrollbar-thin max-h-96 divide-y divide-zinc-700" :class="{hidden: !isDropdownOpen, 'top-full': position == 'bottom', 'bottom-auto': position == 'bottom', 'top-auto': position == 'top', 'bottom-full': position == 'top', 'rounded-b': position == 'bottom', 'rounded-t': position == 'top'}">
+      <li class="bg-zinc-600 flex" v-if="false && position == 'bottom' && isDropdownOpen">
+        <input v-model="filterText" class="w-full p-2 m-2 rounded bg-zinc-500" placeholder="Search...">
       </li>
-      <li class="select-none text-slate-200 px-2 py-1 cursor-pointer hover:bg-slate-500" @click.stop="selectOption(null)">
+      <li class="select-none text-zinc-200 px-2 py-1 cursor-pointer hover:bg-zinc-500" @click.stop="selectOption(null)">
         None
       </li>
 
       <template v-for="(opts, key) of options">
-        <li v-if="key.toString() != '_'" class="select-none capitalize text-slate-200 px-2 py-1 pointer-events-none bg-slate-700" @click.stop="selectOption(null)">
+        <li v-if="key.toString() != '_'" class="select-none capitalize text-zinc-200 px-2 py-1 pointer-events-none bg-zinc-700" @click.stop="selectOption(null)">
           {{key}}
         </li>
-        <li :title="option.name" class="select-none text-slate-200 px-2 py-1 cursor-pointer hover:bg-slate-500 flex" v-for="(option, index) in opts" :key="option?.id" @click.stop="selectOption(option)">
-          <div class="w-[64px] min-w-[64px] aspect-square mr-2"><img class="rounded bg-slate-400" :src="option.preview"></div>
+        <li :title="option.name" class="select-none text-zinc-200 px-2 py-1 cursor-pointer hover:bg-zinc-500 flex" v-for="(option, index) in opts" :key="option?.id" @click.stop="selectOption(option)">
+          <div class="w-[64px] min-w-[64px] aspect-square mr-2"><img class="rounded bg-zinc-400" :src="option.preview"></div>
           <div class="self-center truncate">{{ option.name }}</div>
         </li>
 

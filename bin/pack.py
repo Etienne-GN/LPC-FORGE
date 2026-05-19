@@ -16,12 +16,20 @@ OUTPUT_COLORS = 'src/data/colors.json'
 
 # Mappings
 CATEGORY_MAPPING = {
+    # anatomy
     "body": "anatomy",
     "head": "anatomy",
     "hair": "anatomy",
+    "hairextl": "anatomy",
+    "hairextr": "anatomy",
+    "ponytail": "anatomy",
+    "updo": "anatomy",
     "wrinkles": "anatomy",
     "eyes": "anatomy",
     "ears": "anatomy",
+    "ears_inner": "anatomy",
+    "furry_ears": "anatomy",
+    "furry_ears_skin": "anatomy",
     "nose": "anatomy",
     "beards": "anatomy",
     "beard": "anatomy",
@@ -30,45 +38,110 @@ CATEGORY_MAPPING = {
     "tails": "anatomy",
     "tail": "anatomy",
     "wings": "anatomy",
+    "wings_dots": "anatomy",
+    "wings_edge": "anatomy",
     "fins": "anatomy",
     "horns": "anatomy",
     "eyebrows": "anatomy",
     "expression": "anatomy",
+    "expression_crying": "anatomy",
+    "wheelchair": "anatomy",
+    "prosthesis_hand": "anatomy",
+    "prosthesis_leg": "anatomy",
+    "facial_mask": "anatomy",
+    "facial_eyes": "anatomy",
+    "facial_right_trim": "anatomy",
+    "facial_left_trim": "anatomy",
+    "facial_left": "anatomy",
+    "facial_right": "anatomy",
+    # clothes
     "legs": "clothes",
     "pants": "clothes",
     "shorts": "clothes",
     "skirts": "clothes",
+    "apron": "clothes",
     "torso": "clothes",
     "shirts": "clothes",
     "armor": "clothes",
     "armour": "clothes",
+    "clothes": "clothes",
     "vest": "clothes",
     "jacket": "clothes",
+    "jacket_collar": "clothes",
+    "jacket_trim": "clothes",
+    "jacket_pockets": "clothes",
+    "sleeves": "clothes",
     "feet": "clothes",
     "shoes": "clothes",
+    "shoes_toe": "clothes",
+    "socks": "clothes",
     "boots": "clothes",
     "dress": "clothes",
     "dresses": "clothes",
+    "dress_trim": "clothes",
+    "dress_sleeves": "clothes",
+    "dress_sleeves_trim": "clothes",
+    "overalls": "clothes",
     "shoulders": "clothes",
+    "bauldron": "clothes",
     "belt": "clothes",
+    "sash": "clothes",
+    "sash_tie": "clothes",
+    "buckles": "clothes",
     "arms": "clothes",
     "cape": "clothes",
+    "cape_trim": "clothes",
     "headwear": "clothes",
     "hat": "clothes",
+    "hat_trim": "clothes",
+    "hat_accessory": "clothes",
+    "hat_buckle": "clothes",
+    "hat_overlay": "clothes",
     "helmets": "clothes",
     "gloves": "clothes",
     "bracers": "clothes",
     "wrists": "clothes",
     "neck": "clothes",
+    "necklace": "clothes",
+    "charm": "clothes",
     "waist": "clothes",
+    "ring": "clothes",
+    "earrings": "clothes",
+    "earring_left": "clothes",
+    "earring_right": "clothes",
+    "accessory": "clothes",
+    "bandana": "clothes",
+    "bandana_overlay": "clothes",
+    "visor": "clothes",
+    "headcover": "clothes",
+    "headcover_rune": "clothes",
+    "hairtie": "clothes",
+    "hairtie_rune": "clothes",
+    "chainmail": "clothes",
+    "bandages": "clothes",
+    "backpack_straps": "clothes",
+    "cargo": "clothes",
+    # equipment
     "weapons": "equipment",
     "weapon": "equipment",
+    "weapon_magic_crystal": "equipment",
     "shield": "equipment",
     "shields": "equipment",
+    "shield_trim": "equipment",
+    "shield_paint": "equipment",
+    "shield_pattern": "equipment",
     "backpack": "equipment",
     "quiver": "equipment",
+    "ammo": "equipment",
     "tools": "equipment",
-    "wounds": "injuries"
+    # injuries
+    "wounds": "injuries",
+    "wound_eye_right": "injuries",
+    "wound_arm": "injuries",
+    "wound_eye_left": "injuries",
+    "wound_ribs": "injuries",
+    "wound_mouth": "injuries",
+    "wound_brain": "injuries",
 }
 
 ANIMATION_MAPPING = {
@@ -85,17 +158,31 @@ ANIMATION_MAPPING = {
 
 SKIP_ANIMATIONS = ["run", "jump", "sit", "emote", "climb", "watering", "combat", "1h_slash", "1h_halfslash"]
 
-def hex_to_rgba(hex_str):
-    hex_str = hex_str.lstrip('#')
-    if len(hex_str) == 6:
-        r, g, b = struct.unpack('BBB', bytes.fromhex(hex_str))
-        return [r, g, b, 255]
-    elif len(hex_str) == 8:
-        r, g, b, a = struct.unpack('BBBB', bytes.fromhex(hex_str))
-        return [r, g, b, a]
-    return [0, 0, 0, 255]
+def get_item_variant(item_path):
+    """
+    Returns the variant name when the item uses subdirectory animation format
+    (i.e. {path}/{anim}/{variant}.png instead of {path}/{anim}.png).
+    Only returns a name when every animation dir contains exactly one PNG,
+    confirming this is a single-variant subdirectory layout.
+    """
+    sprite_dir = os.path.join(INPUT_SPRITES, item_path)
+    if not os.path.isdir(sprite_dir):
+        return None
+    variant = None
+    for anim_key in list(ANIMATION_MAPPING.keys()):
+        anim_dir = os.path.join(sprite_dir, anim_key)
+        if os.path.isdir(anim_dir):
+            pngs = [f for f in os.listdir(anim_dir) if f.endswith('.png')]
+            if len(pngs) == 1:
+                candidate = pngs[0][:-4]
+                if variant is None:
+                    variant = candidate
+                elif variant != candidate:
+                    return None  # inconsistent — not a simple single-variant layout
+            else:
+                return None  # multiple pre-colored variants — not supported by this path
+    return variant
 
-# Using a simpler hex_to_rgba without struct for portability
 def hex_to_rgba_simple(hex_str):
     hex_str = hex_str.lstrip('#')
     if len(hex_str) == 3:
@@ -107,6 +194,53 @@ def hex_to_rgba_simple(hex_str):
     if len(hex_str) == 8:
         a = int(hex_str[6:8], 16)
     return [r, g, b, a]
+
+def detect_sprite_color(sprite_path, colors_data, material_cat):
+    """Detect the base color of a sprite by matching its pixels against palette entries."""
+    if not os.path.exists(sprite_path):
+        return None
+    try:
+        img = Image.open(sprite_path).convert('RGBA')
+        pixels = img.getdata()
+        unique_pixels = set()
+        for p in pixels:
+            if p[3] > 0:
+                unique_pixels.add((p[0], p[1], p[2]))
+
+        scores = {}
+        for color_id, color_info in colors_data.items():
+            if material_cat != 'all' and material_cat not in color_info.get('materials', []):
+                continue
+            for entry in color_info['palette']:
+                key = (entry[0], entry[1], entry[2])
+                if key in unique_pixels:
+                    scores[color_id] = scores.get(color_id, 0) + 1
+
+        if scores:
+            best = max(scores.items(), key=lambda x: x[1])
+            if best[1] >= 2:
+                return best[0]
+        return None
+    except Exception:
+        return None
+
+
+def find_sample_sprite(item_path, conditions=None):
+    """Find a usable walk or idle PNG for color detection."""
+    preferred = ['walk', 'idle', 'thrust', 'spellcast', 'slash']
+    search_paths = []
+    if conditions:
+        search_paths = [os.path.join(INPUT_SPRITES, p) for p in conditions.values()]
+    else:
+        search_paths = [os.path.join(INPUT_SPRITES, item_path)]
+
+    for sp in search_paths:
+        for anim in preferred:
+            candidate = os.path.join(sp, f"{anim}.png")
+            if os.path.exists(candidate):
+                return candidate
+    return None
+
 
 def get_preview_image(item_path, animations, type_name):
     # Try to find a suitable animation for preview
@@ -239,19 +373,43 @@ def main():
                 
             # Animation mapping and verification
             raw_anims = data.get('animations', [])
-            
+
             def filter_poses(item_path):
                 valid_poses = []
-                for a in raw_anims:
-                    if a in SKIP_ANIMATIONS: continue
-                    
-                    # Check if file exists (either a.png or something from ANIMATION_MAPPING)
-                    # For bodies, path is sub_path. For regular, it's base_path.
-                    if os.path.exists(os.path.join(INPUT_SPRITES, item_path, f"{a}.png")):
-                        if a in ANIMATION_MAPPING:
-                            valid_poses.append(ANIMATION_MAPPING[a])
-                        else:
-                            valid_poses.append(a)
+                anims_to_check = raw_anims if raw_anims else []
+
+                for a in anims_to_check:
+                    if a in SKIP_ANIMATIONS:
+                        continue
+                    sprite_dir = os.path.join(INPUT_SPRITES, item_path)
+                    # Support both flat format (walk.png) and subdirectory format (walk/)
+                    png_exists = os.path.exists(os.path.join(sprite_dir, f"{a}.png"))
+                    dir_path = os.path.join(sprite_dir, a)
+                    dir_has_png = os.path.isdir(dir_path) and any(
+                        f.endswith('.png') for f in os.listdir(dir_path)
+                    )
+                    if png_exists or dir_has_png:
+                        mapped = ANIMATION_MAPPING.get(a, a)
+                        if mapped not in valid_poses:
+                            valid_poses.append(mapped)
+
+                # Fallback: scan directory when sheet definition has no animations list
+                if not valid_poses and not raw_anims:
+                    sprite_dir = os.path.join(INPUT_SPRITES, item_path)
+                    if os.path.isdir(sprite_dir):
+                        for entry in sorted(os.listdir(sprite_dir)):
+                            anim_name = entry[:-4] if entry.endswith('.png') else entry
+                            if anim_name in SKIP_ANIMATIONS:
+                                continue
+                            full_entry = os.path.join(sprite_dir, entry)
+                            is_anim_png = entry.endswith('.png') and anim_name in ANIMATION_MAPPING or anim_name in set(ANIMATION_MAPPING.values())
+                            is_anim_dir = os.path.isdir(full_entry) and any(
+                                f.endswith('.png') for f in os.listdir(full_entry)
+                            ) and anim_name not in ('bg', 'fg')
+                            if is_anim_png or is_anim_dir:
+                                mapped = ANIMATION_MAPPING.get(anim_name, anim_name)
+                                if mapped not in valid_poses:
+                                    valid_poses.append(mapped)
                 return valid_poses
 
             # Recolor mapping
@@ -264,9 +422,11 @@ def main():
                 }
             }
             
-            default_color = "white"
-            if material_cat == "body": default_color = "ivory"
-            elif material_cat == "hair": default_color = "black"
+            FALLBACK_COLORS = {
+                "body": "ivory", "hair": "orange", "metal": "iron",
+                "eye": "brown", "cloth": "white", "all": "white",
+            }
+            default_color = FALLBACK_COLORS.get(material_cat, "white")
 
             # For body, we might need to split it
             if type_name == "body" and isinstance(data.get("layer_1"), dict) and any(bt in data["layer_1"] for bt in ["male", "female", "muscular", "pregnant", "teen", "child"]):
@@ -293,16 +453,20 @@ def main():
                                 }
                                 break
                         
+                        body_variant = get_item_variant(sub_path)
+                        sample = find_sample_sprite(sub_path)
+                        body_color = (detect_sprite_color(sample, colors, material_cat) if sample else None) or default_color
                         packed[v_type][type_name][item_slug] = {
                             "id": item_id,
                             "name": f"{body_type.title()} Body" if is_base_body else f"{data.get('name', item_slug.title())} ({body_type.title()})",
                             "path": sub_path,
                             "group": type_name,
                             "actAs": f"anatomy.body.{body_type}" if not is_base_body else None,
+                            "variant": body_variant,
                             "layers": { "fg": { "z": data["layer_1"].get('zPos', 10) } },
                             "poses": body_poses,
                             "materials": materials,
-                            "colors": { "primary": default_color },
+                            "colors": { "primary": body_color },
                             "preview": get_preview_image(sub_path, raw_anims, type_name),
                             **item_credits
                         }
@@ -360,11 +524,14 @@ def main():
                       check_path = l1[bt_slug].rstrip('/')
 
             item_poses = filter_poses(check_path)
+            item_variant = get_item_variant(check_path)
+
+            sample = find_sample_sprite(check_path, conditions if conditions else None)
+            default_color = (detect_sprite_color(sample, colors, material_cat) if sample else None) or default_color
 
             # Credits
             item_credits = {"authors": [], "licenses": [], "urls": [], "notes": ""}
             if data.get('credits'):
-                # Just take the first one or combine?
                 c = data['credits'][0]
                 item_credits = {
                     "authors": c.get('authors', []),
@@ -379,6 +546,7 @@ def main():
                 "path": base_path,
                 "group": type_name,
                 "actAs": None,
+                "variant": item_variant,
                 "layers": layers,
                 "poses": item_poses,
                 "materials": materials,

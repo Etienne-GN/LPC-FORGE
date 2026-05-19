@@ -82,7 +82,7 @@ async function onDownloadLayers() {
 </script>
 
 <template>
-  <div class="text-slate-400 p-2 flex flex-col gap-2">
+  <div class="text-zinc-400 p-2 flex flex-col gap-2">
     <h2 class="font-bold flex mb-2">
       <span class="flex-grow">Rendering</span>
     </h2>

@@ -106,18 +106,7 @@ export abstract class ItemCollection {
     }
 
     getOptions(key:string):{[key:string]:Item} {
-        const out:{[key:string]:Item} = {}
-        const options:{[key:string]:Item} = this.getItems(key) as {[key:string]:Item};
-
-        for (const i in options) {
-            const part = options[i];
-
-            if(part.isAllowed()) {
-                out[i] = options[i]
-            }
-        }
-
-        return out
+        return (this.getItems(key) as {[key:string]:Item}) ?? {}
     }
 
     getFilteredOptions(type:string) {

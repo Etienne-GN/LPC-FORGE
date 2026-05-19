@@ -71,11 +71,11 @@ const applyRace = async (race: RacePreset) => {
 </script>
 
 <template>
-  <section class="flex flex-1 overflow-hidden relative bg-slate-900 divide-x divide-slate-800">
+  <section class="flex flex-1 overflow-hidden relative bg-zinc-900 divide-x divide-zinc-800">
     <side-bar class="w-80">
       <div class="p-4 flex flex-col gap-4">
         <div class="flex justify-between items-center">
-          <h2 class="text-xl font-bold text-slate-200">Race Presets</h2>
+          <h2 class="text-xl font-bold text-zinc-200">Race Presets</h2>
           <ui-button @click="addRace" ui="primary" icon="plus" title="Add Race">Add</ui-button>
         </div>
         
@@ -83,7 +83,7 @@ const applyRace = async (race: RacePreset) => {
           <div v-for="race in races" :key="race.id" 
                @click="selectedRace = race"
                class="p-3 rounded cursor-pointer transition-colors"
-               :class="{'bg-slate-700 text-white': selectedRace?.id === race.id, 'bg-slate-800 text-slate-400 hover:bg-slate-700': selectedRace?.id !== race.id}">
+               :class="{'bg-zinc-700 text-white': selectedRace?.id === race.id, 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700': selectedRace?.id !== race.id}">
             <div class="font-bold">{{ race.name }}</div>
             <div class="text-xs opacity-70 truncate">{{ race.description || 'No description' }}</div>
           </div>
@@ -91,20 +91,20 @@ const applyRace = async (race: RacePreset) => {
       </div>
     </side-bar>
 
-    <main class="flex-1 bg-slate-800 p-8 overflow-y-auto">
+    <main class="flex-1 bg-zinc-800 p-8 overflow-y-auto">
       <div v-if="selectedRace" class="max-w-2xl mx-auto flex flex-col gap-6">
         <div class="flex flex-col gap-2">
-          <label class="text-slate-400 text-sm uppercase font-bold">Race Name</label>
-          <input v-model="selectedRace.name" @change="saveRaces" class="bg-slate-700 text-white p-3 rounded border border-slate-600 focus:border-violet-500 outline-none">
+          <label class="text-zinc-400 text-sm uppercase font-bold">Race Name</label>
+          <input v-model="selectedRace.name" @change="saveRaces" class="bg-zinc-700 text-white p-3 rounded border border-zinc-600 focus:border-amber-500 outline-none">
         </div>
 
         <div class="flex flex-col gap-2">
-          <label class="text-slate-400 text-sm uppercase font-bold">Description</label>
-          <textarea v-model="selectedRace.description" @change="saveRaces" rows="3" class="bg-slate-700 text-white p-3 rounded border border-slate-600 focus:border-violet-500 outline-none resize-none"></textarea>
+          <label class="text-zinc-400 text-sm uppercase font-bold">Description</label>
+          <textarea v-model="selectedRace.description" @change="saveRaces" rows="3" class="bg-zinc-700 text-white p-3 rounded border border-zinc-600 focus:border-amber-500 outline-none resize-none"></textarea>
         </div>
 
-        <div class="bg-slate-900 p-6 rounded-lg border border-slate-700 flex flex-col gap-4">
-            <h3 class="text-slate-200 font-bold border-b border-slate-700 pb-2">Actions</h3>
+        <div class="bg-zinc-900 p-6 rounded-lg border border-zinc-700 flex flex-col gap-4">
+            <h3 class="text-zinc-200 font-bold border-b border-zinc-700 pb-2">Actions</h3>
             <div class="grid grid-cols-2 gap-4">
                 <ui-button @click="applyRace(selectedRace)" ui="primary" class="w-full h-12" icon="check" title="Apply Preset">Apply Preset</ui-button>
                 <ui-button @click="updateRace" ui="secondary" class="w-full h-12" icon="content-save" title="Update from Character">Update from Character</ui-button>
@@ -113,12 +113,12 @@ const applyRace = async (race: RacePreset) => {
         </div>
 
         <div class="flex flex-col gap-2">
-          <label class="text-slate-400 text-sm uppercase font-bold">Data (JSON)</label>
+          <label class="text-zinc-400 text-sm uppercase font-bold">Data (JSON)</label>
           <pre class="bg-black text-green-400 p-4 rounded text-xs overflow-auto max-h-64">{{ JSON.stringify(selectedRace.data, null, 2) }}</pre>
         </div>
       </div>
       
-      <div v-else class="h-full flex flex-col items-center justify-center text-slate-500 gap-4">
+      <div v-else class="h-full flex flex-col items-center justify-center text-zinc-500 gap-4">
         <i class="mdi mdi-account-group text-6xl opacity-20"></i>
         <p>Select a race preset from the sidebar or create a new one.</p>
       </div>

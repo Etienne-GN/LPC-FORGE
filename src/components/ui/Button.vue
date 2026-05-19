@@ -8,13 +8,13 @@ const props = defineProps<{
 }>()
 
 function getClasses():string {
-  let colorsPrimary:string = 'bg-violet-600 hover:bg-violet-700';
-  let colorsSecondary:string = 'bg-slate-600 hover:bg-slate-700';
+  let colorsPrimary:string = 'bg-amber-600 hover:bg-amber-700';
+  let colorsSecondary:string = 'bg-zinc-600 hover:bg-zinc-700';
   let squareSize:string = ' h-8 w-8';
 
   if(props.active) {
-    colorsPrimary = 'bg-violet-400 hover:bg-violet-400';
-    colorsSecondary = 'bg-slate-400 hover:bg-slate-400';
+    colorsPrimary = 'bg-amber-400 hover:bg-amber-400';
+    colorsSecondary = 'bg-zinc-400 hover:bg-zinc-400';
   }
 
   if(props.small) {
@@ -25,13 +25,15 @@ function getClasses():string {
 
   switch(props.ui) {
     case 'primary':
-      return colorsPrimary + ' py-1 px-3 disabled:bg-violet-800 disabled:text-slate-500 text-slate-200';
+      return colorsPrimary + ' py-1 px-3 disabled:bg-amber-800 disabled:text-zinc-500 text-zinc-200';
     case 'primary-square':
-      return colorsPrimary + squareSize + ' aspect-square leading-none disabled:bg-violet-800 disabled:text-slate-500 text-slate-200';
+      return colorsPrimary + squareSize + ' aspect-square leading-none disabled:bg-amber-800 disabled:text-zinc-500 text-zinc-200';
     case 'secondary':
-      return colorsSecondary + ' py-1 px-3 disabled:bg-slate-800 disabled:text-slate-500 text-slate-200';
+      return colorsSecondary + ' py-1 px-3 disabled:bg-zinc-800 disabled:text-zinc-500 text-zinc-200';
     case 'secondary-square':
-      return colorsSecondary + squareSize + ' aspect-square leading-none disabled:bg-slate-800 disabled:text-slate-500 text-slate-200';
+      return colorsSecondary + squareSize + ' aspect-square leading-none disabled:bg-zinc-800 disabled:text-zinc-500 text-zinc-200';
+    case 'danger':
+      return 'bg-red-800 hover:bg-red-700 py-1 px-3 text-zinc-200';
   }
 
   return ''

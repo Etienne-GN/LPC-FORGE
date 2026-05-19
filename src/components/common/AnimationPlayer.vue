@@ -178,7 +178,7 @@ watch(() => props.current, async () => {
       <div ref="base"
            class="text-center leading-[0] flex place-content-center">
         <canvas
-            class="h-fit aspect-square shrink-0 grow-0 relative pointer-events-none origin-center bg-cover bg-slate-700 rounded inline-block"
+            class="h-fit aspect-square shrink-0 grow-0 relative pointer-events-none origin-center bg-cover bg-zinc-700 rounded inline-block"
             style="image-rendering: pixelated;" ref="canvas" width="192" height="192"></canvas>
       </div>
     </div>

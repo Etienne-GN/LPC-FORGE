@@ -37,8 +37,13 @@ export class ItemAnimation {
             this.image = new Image()
             this.image.crossOrigin = 'Anonymous' // to avoid CORS if used with Canvas
             this.image.src = this.getPath()
-            await this.image.decode()
-            this.initCanvas()
+            try {
+                await this.image.decode()
+                this.initCanvas()
+            } catch(e) {
+                console.warn(`Failed to load sprite: ${this.image.src}`)
+                this.image = null
+            }
         }
     }
 
@@ -162,8 +167,11 @@ export class ItemAnimation {
         }
         const fileType = typeMap[this.type] || this.type
 
-        path += '/' + fileType + '.png'
+        // Subdirectory-format sprites: {path}/{anim}/{variant}.png
+        if(this.item.variant) {
+            return path + '/' + fileType + '/' + this.item.variant + '.png'
+        }
 
-        return path
+        return path + '/' + fileType + '.png'
     }
 }

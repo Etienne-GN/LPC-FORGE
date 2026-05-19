@@ -13,6 +13,7 @@ export class Item {
     path: string
     group: string
     actAs: string
+    variant: string | null
     sizes:{[key:string]:string}
     preview: string
     animations: string[]
@@ -29,6 +30,7 @@ export class Item {
         this.path = itemData.path
         this.group = itemData.group || null
         this.actAs = itemData.actAs || null
+        this.variant = itemData.variant || null
         this.sizes = itemData.sizes || {}
         this.animations = itemData.poses
         this.colors = new ItemColors(this)

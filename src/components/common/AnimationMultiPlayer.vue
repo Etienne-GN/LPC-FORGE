@@ -205,28 +205,28 @@ watch(() => props.current, async () => {
       <div :ref="base.down" @scroll.passive="onScroll( 'down')"
            class="overflow-scroll scrollbar-thin text-center leading-[0] flex place-content-center">
         <canvas
-            class="h-fit aspect-square shrink-0 grow-0 relative pointer-events-none origin-center bg-cover bg-slate-700 rounded inline-block"
+            class="h-fit aspect-square shrink-0 grow-0 relative pointer-events-none origin-center bg-cover bg-zinc-700 rounded inline-block"
             style="image-rendering: pixelated;" :ref="canvas.down" width="192" height="192"></canvas>
       </div>
 
       <div :ref="base.left" @scroll.passive="onScroll( 'left')"
            class="overflow-scroll scrollbar-thin text-center leading-[0] flex place-content-center">
         <canvas
-            class="h-fit aspect-square shrink-0 grow-0 relative pointer-events-none origin-center bg-cover bg-slate-700 rounded inline-block"
+            class="h-fit aspect-square shrink-0 grow-0 relative pointer-events-none origin-center bg-cover bg-zinc-700 rounded inline-block"
             style="image-rendering: pixelated;" :ref="canvas.left" width="192" height="192"></canvas>
       </div>
 
       <div :ref="base.up" @scroll.passive="onScroll( 'up')"
            class="overflow-scroll scrollbar-thin text-center leading-[0] flex place-content-center">
         <canvas
-            class="h-fit aspect-square shrink-0 grow-0 relative pointer-events-none origin-center bg-cover bg-slate-700 rounded inline-block"
+            class="h-fit aspect-square shrink-0 grow-0 relative pointer-events-none origin-center bg-cover bg-zinc-700 rounded inline-block"
             style="image-rendering: pixelated;" :ref="canvas.up" width="192" height="192"></canvas>
       </div>
 
       <div :ref="base.right" @scroll.passive="onScroll('right')"
            class="overflow-scroll scrollbar-thin text-center leading-[0] flex place-content-center">
         <canvas
-            class="h-fit aspect-square shrink-0 grow-0 relative pointer-events-none origin-center bg-cover bg-slate-700 rounded inline-block"
+            class="h-fit aspect-square shrink-0 grow-0 relative pointer-events-none origin-center bg-cover bg-zinc-700 rounded inline-block"
             style="image-rendering: pixelated;" :ref="canvas.right" width="192" height="192"></canvas>
       </div>
     </div>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {type Ref, ref} from "vue";
+import {type Ref, ref, onMounted} from "vue";
 
 import SideBar from "@/components/ui/SideBar.vue";
 import ShortBar from "@/components/ui/ShortBar.vue";
@@ -22,14 +22,13 @@ import {ColorCollection} from "@/types/ColorCollection";
 import {HorseCollection} from "@/types/HorseCollection";
 import {Item} from "@/types/Item";
 
-import raw_data from '@/data/packed.json'
 import raw_colors from '@/data/colors.json'
-
+import horse_data from '@/data/horse.json'
 
 const colors:Ref<ColorCollection> = ref(new ColorCollection())
 colors.value.initColors(raw_colors)
 const collection:Ref<HorseCollection> = ref(new HorseCollection(colors.value)) as Ref<HorseCollection>
-collection.value.initItems(raw_data);
+collection.value.initItems(horse_data);
 
 const renderer:HorseRenderer = new HorseRenderer(collection.value);
 const spriteCanvas = ref()
@@ -84,10 +83,14 @@ async function onRefresh() {
 }
 
 const currentPose = ref('walk')
+
+onMounted(() => {
+  renderer.draw()
+})
 </script>
 
 <template>
-  <section class="flex flex-1 overflow-hidden relative bg-slate-900 divide-x divide-slate-800">
+  <section class="flex flex-1 overflow-hidden relative bg-zinc-900 divide-x divide-zinc-800">
     <short-bar>
       <ui-button @click="leftTab = 'anatomy'" :active="leftTab == 'anatomy'" ui="primary-square" title="Anatomy" icon="human"></ui-button>
       <ui-button @click="leftTab = 'clothes'" :disabled="!collection.isBodySelected()" :active="leftTab == 'clothes'" ui="primary-square" title="Clothes" icon="hanger"></ui-button>
@@ -95,10 +98,10 @@ const currentPose = ref('walk')
 
     <side-bar ref="sideBar">
       <sprite-card @selected="onRefresh" @toggle-color-selector="onToggleColorSelector" :hidden="currentColorPicker" :refresh="refresh" :collection="collection" :tab="leftTab"></sprite-card>
-      <color-select @selected="onColorSelected" @close="onColorPickerClosed" :collection="collection" :item="currentColorItem" :material="currentColorMaterial" :class="{hidden: !currentColorPicker}" class="bg-slate-900 text-slate-400"></color-select>
+      <color-select @selected="onColorSelected" @close="onColorPickerClosed" :collection="collection" :item="currentColorItem" :material="currentColorMaterial" :class="{hidden: !currentColorPicker}" class="bg-zinc-900 text-zinc-400"></color-select>
     </side-bar>
 
-    <main class="flex flex-col overflow-hidden flex-1 gap-4 bg-slate-800">
+    <main class="flex flex-col overflow-hidden flex-1 gap-4 bg-zinc-800">
       <pose-bar :class="{hidden: centerTab == 'sprites'}">
         <ui-button :disabled="collection.isAnimationDisabled('walk')" @click="currentPose = 'walk'" :active="currentPose == 'walk'" ui="primary" title="Walk">Walk</ui-button>
         <ui-button :disabled="collection.isAnimationDisabled('gallop')" @click="currentPose = 'gallop'" :active="currentPose == 'gallop'" ui="primary" title="Gallop">Gallop</ui-button>

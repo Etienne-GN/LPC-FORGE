@@ -156,7 +156,7 @@ function onFileSelected(event: any) {
 </script>
 
 <template>
-  <div class="text-slate-400 p-2 flex flex-col gap-2">
+  <div class="text-zinc-400 p-2 flex flex-col gap-2">
     <div class="">
       <h2 class="mb-1">
         <span class="font-bold">Savings</span>
@@ -168,8 +168,8 @@ function onFileSelected(event: any) {
         <input class="hidden" @change="onFileSelected" type="file" accept=".vit" ref="file">
       </div>
     </div>
-    <div v-for="(value, key, index) in savings" class="bg-slate-800 p-2 rounded flex gap-2">
-      <img :src="value.preview" class="bg-slate-700 rounded">
+    <div v-for="(value, key, index) in savings" class="bg-zinc-800 p-2 rounded flex gap-2">
+      <img :src="value.preview" class="bg-zinc-700 rounded">
       <div class="flex-grow">
         <div class="flex gap-2 justify-end">
           <UIButton @click="onExportSaving(key)" :small="true" ui="secondary-square" icon="export"
