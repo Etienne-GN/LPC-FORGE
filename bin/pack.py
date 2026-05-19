@@ -482,6 +482,7 @@ def main():
                             "group": type_name,
                             "actAs": f"anatomy.body.{body_type}" if not is_base_body else None,
                             "variant": body_variant,
+                            "variants": [],
                             "layers": { "fg": { "z": data["layer_1"].get('zPos', 10) } },
                             "poses": body_poses,
                             "materials": materials,
@@ -555,26 +556,24 @@ def main():
                     "notes": c.get('notes', "")
                 }
 
-            # Multi-variant items (pre-colored: one file per color per animation)
             multi_variants = get_multi_variants(check_path)
             if multi_variants:
-                for var_name in multi_variants:
-                    var_slug = f"{item_slug}_{var_name}"
-                    var_id = f"{v_type}.{type_name}.{var_slug}"
-                    packed[v_type][type_name][var_slug] = {
-                        "id": var_id,
-                        "name": f"{item_name} ({var_name.replace('_', ' ').title()})",
-                        "path": base_path,
-                        "group": item_slug,
-                        "actAs": None,
-                        "variant": var_name,
-                        "layers": layers,
-                        "poses": item_poses,
-                        "materials": {},
-                        "colors": {},
-                        "preview": "",
-                        **item_credits
-                    }
+                # Pre-colored variants: one item, user picks color via variant selector
+                packed[v_type][type_name][item_slug] = {
+                    "id": item_id,
+                    "name": item_name,
+                    "path": base_path,
+                    "group": type_name,
+                    "actAs": None,
+                    "variant": multi_variants[0],
+                    "variants": multi_variants,
+                    "layers": layers,
+                    "poses": item_poses,
+                    "materials": {},
+                    "colors": {},
+                    "preview": "",
+                    **item_credits
+                }
             else:
                 item_variant = get_item_variant(check_path)
                 sample = find_sample_sprite(check_path, conditions if conditions else None)
@@ -587,6 +586,7 @@ def main():
                     "group": type_name,
                     "actAs": None,
                     "variant": item_variant,
+                    "variants": [],
                     "layers": layers,
                     "poses": item_poses,
                     "materials": materials,

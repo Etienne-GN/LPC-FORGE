@@ -14,6 +14,7 @@ export class Item {
     group: string
     actAs: string
     variant: string | null
+    variants: string[]
     sizes:{[key:string]:string}
     preview: string
     animations: string[]
@@ -31,6 +32,7 @@ export class Item {
         this.group = itemData.group || null
         this.actAs = itemData.actAs || null
         this.variant = itemData.variant || null
+        this.variants = itemData.variants || []
         this.sizes = itemData.sizes || {}
         this.animations = itemData.poses
         this.colors = new ItemColors(this)
@@ -49,6 +51,32 @@ export class Item {
         });
 
         this.credits = new ItemCredits(itemData.authors, itemData.licenses, itemData.urls, itemData.notes);
+    }
+
+    /**
+     * Change the active pre-colored variant and reset animation state so the
+     * new PNG is fetched on the next colorize/draw cycle.
+     */
+    setVariant(variant: string) {
+        this.variant = variant
+        const resetAnim = (anim: any) => {
+            anim.loaded = false
+            anim.image = null
+            anim.canvas = null
+            anim.originalCanvas = null
+            anim.context = null
+            anim.originalContext = null
+        }
+        for (const layer of Object.values(this.layers)) {
+            const l = layer as any
+            if (l.conditions) {
+                for (const cond of l.conditions) {
+                    Object.values(cond.animations).forEach(resetAnim)
+                }
+            } else {
+                Object.values(l.animations).forEach(resetAnim)
+            }
+        }
     }
 
     /**
