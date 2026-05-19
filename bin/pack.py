@@ -225,6 +225,25 @@ def detect_sprite_color(sprite_path, colors_data, material_cat):
         return None
 
 
+def get_multi_variants(check_path):
+    """
+    Returns sorted list of variant names if item uses {path}/{anim}/{variant}.png
+    with multiple variants. Returns None otherwise.
+    """
+    sprite_dir = os.path.join(INPUT_SPRITES, check_path)
+    if not os.path.isdir(sprite_dir):
+        return None
+    for anim_key in list(ANIMATION_MAPPING.keys()):
+        anim_dir = os.path.join(sprite_dir, anim_key)
+        if os.path.isdir(anim_dir):
+            pngs = sorted([f[:-4] for f in os.listdir(anim_dir)
+                           if f.endswith('.png') and not f.startswith('_')])
+            if len(pngs) > 1:
+                return pngs
+            return None  # single file — handled by get_item_variant
+    return None
+
+
 def find_sample_sprite(item_path, conditions=None):
     """Find a usable walk or idle PNG for color detection."""
     preferred = ['walk', 'idle', 'thrust', 'spellcast', 'slash']
@@ -524,10 +543,6 @@ def main():
                       check_path = l1[bt_slug].rstrip('/')
 
             item_poses = filter_poses(check_path)
-            item_variant = get_item_variant(check_path)
-
-            sample = find_sample_sprite(check_path, conditions if conditions else None)
-            default_color = (detect_sprite_color(sample, colors, material_cat) if sample else None) or default_color
 
             # Credits
             item_credits = {"authors": [], "licenses": [], "urls": [], "notes": ""}
@@ -540,20 +555,45 @@ def main():
                     "notes": c.get('notes', "")
                 }
 
-            packed[v_type][type_name][item_slug] = {
-                "id": item_id,
-                "name": item_name,
-                "path": base_path,
-                "group": type_name,
-                "actAs": None,
-                "variant": item_variant,
-                "layers": layers,
-                "poses": item_poses,
-                "materials": materials,
-                "colors": { "primary": default_color },
-                "preview": get_preview_image(base_path, raw_anims, type_name),
-                **item_credits
-            }
+            # Multi-variant items (pre-colored: one file per color per animation)
+            multi_variants = get_multi_variants(check_path)
+            if multi_variants:
+                for var_name in multi_variants:
+                    var_slug = f"{item_slug}_{var_name}"
+                    var_id = f"{v_type}.{type_name}.{var_slug}"
+                    packed[v_type][type_name][var_slug] = {
+                        "id": var_id,
+                        "name": f"{item_name} ({var_name.replace('_', ' ').title()})",
+                        "path": base_path,
+                        "group": item_slug,
+                        "actAs": None,
+                        "variant": var_name,
+                        "layers": layers,
+                        "poses": item_poses,
+                        "materials": {},
+                        "colors": {},
+                        "preview": "",
+                        **item_credits
+                    }
+            else:
+                item_variant = get_item_variant(check_path)
+                sample = find_sample_sprite(check_path, conditions if conditions else None)
+                default_color = (detect_sprite_color(sample, colors, material_cat) if sample else None) or default_color
+
+                packed[v_type][type_name][item_slug] = {
+                    "id": item_id,
+                    "name": item_name,
+                    "path": base_path,
+                    "group": type_name,
+                    "actAs": None,
+                    "variant": item_variant,
+                    "layers": layers,
+                    "poses": item_poses,
+                    "materials": materials,
+                    "colors": { "primary": default_color },
+                    "preview": get_preview_image(base_path, raw_anims, type_name),
+                    **item_credits
+                }
 
     with open(OUTPUT_PACKED, 'w') as f:
         json.dump(packed, f, indent=2)

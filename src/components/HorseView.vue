@@ -22,11 +22,11 @@ import {ColorCollection} from "@/types/ColorCollection";
 import {HorseCollection} from "@/types/HorseCollection";
 import {Item} from "@/types/Item";
 
-import raw_colors from '@/data/colors.json'
+import vitruvian_colors from '@/data/vitruvian_colors.json'
 import horse_data from '@/data/horse.json'
 
 const colors:Ref<ColorCollection> = ref(new ColorCollection())
-colors.value.initColors(raw_colors)
+colors.value.initColors(vitruvian_colors)
 const collection:Ref<HorseCollection> = ref(new HorseCollection(colors.value)) as Ref<HorseCollection>
 collection.value.initItems(horse_data);
 
