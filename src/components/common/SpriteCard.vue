@@ -31,13 +31,15 @@ const data:any = props.collection.getSpriteCategories();
         <div v-for="(tab, tabIndex) of value.tabs" :class="{hidden: value.active.value != tabIndex}">
           <sprite-select v-for="(category) of tab.children" @selected="onSpriteSelected"
                          :refresh="refresh"
-                         :collection="collection" :title="category.title" :type="category.type"></sprite-select>
+                         :collection="collection" :title="category.title" :type="category.type"
+                         :companions="category.companions"></sprite-select>
         </div>
       </template>
       <template v-if="!value.tabs">
         <sprite-select v-for="(category) of value.children" @selected="onSpriteSelected"
                        :refresh="refresh"
-                       :collection="collection" :title="category.title" :type="category.type"></sprite-select>
+                       :collection="collection" :title="category.title" :type="category.type"
+                       :companions="category.companions"></sprite-select>
       </template>
     </div>
   </div>

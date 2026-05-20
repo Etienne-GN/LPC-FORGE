@@ -124,6 +124,11 @@ CATEGORY_MAPPING = {
     # equipment
     "weapons": "equipment",
     "weapon": "equipment",
+    "weapon_sword": "equipment",
+    "weapon_blunt": "equipment",
+    "weapon_polearm": "equipment",
+    "weapon_ranged": "equipment",
+    "weapon_magic": "equipment",
     "weapon_magic_crystal": "equipment",
     "shield": "equipment",
     "shields": "equipment",
@@ -244,20 +249,38 @@ def get_multi_variants(check_path):
     return None
 
 
-def find_sample_sprite(item_path, conditions=None):
-    """Find a usable walk or idle PNG for color detection."""
-    preferred = ['walk', 'idle', 'thrust', 'spellcast', 'slash']
-    search_paths = []
-    if conditions:
-        search_paths = [os.path.join(INPUT_SPRITES, p) for p in conditions.values()]
-    else:
-        search_paths = [os.path.join(INPUT_SPRITES, item_path)]
+def find_sample_sprite(item_path):
+    """Find a usable PNG for color detection, trying several path formats."""
+    sp = os.path.join(INPUT_SPRITES, item_path)
+    preferred_anims = ['walk', 'idle', 'thrust', 'spellcast', 'slash']
 
-    for sp in search_paths:
-        for anim in preferred:
-            candidate = os.path.join(sp, f"{anim}.png")
-            if os.path.exists(candidate):
-                return candidate
+    # 1. Flat animation PNGs: {sp}/{anim}.png
+    for anim in preferred_anims:
+        candidate = os.path.join(sp, f"{anim}.png")
+        if os.path.exists(candidate):
+            return candidate
+
+    # 2. Variant subdir animation: {sp}/{anim}/{variant}.png
+    for anim in preferred_anims:
+        anim_dir = os.path.join(sp, anim)
+        if os.path.isdir(anim_dir):
+            pngs = sorted([f for f in os.listdir(anim_dir) if f.endswith('.png') and not f.startswith('_')])
+            if pngs:
+                return os.path.join(anim_dir, pngs[0])
+
+    # 3. Path IS the animation dir (e.g. dragonspear/foreground/walk/) — any PNG inside
+    if os.path.isdir(sp):
+        pngs = sorted([f for f in os.listdir(sp) if f.endswith('.png') and not f.startswith('_')])
+        if pngs:
+            return os.path.join(sp, pngs[0])
+
+    # 4. Any PNG directly in the parent dir (e.g. club/club.png when path is club/)
+    parent = os.path.dirname(sp.rstrip('/'))
+    if os.path.isdir(parent):
+        pngs = sorted([f for f in os.listdir(parent) if f.endswith('.png') and not f.startswith('_')])
+        if pngs:
+            return os.path.join(parent, pngs[0])
+
     return None
 
 
@@ -382,7 +405,17 @@ def main():
                 # Guess from path
                 rel_path = os.path.relpath(root, INPUT_SHEETS)
                 type_name = rel_path.split(os.sep)[0]
-                
+
+            # Remap weapon subtypes using their directory in sheet_definitions
+            if type_name == "weapon":
+                rel = os.path.relpath(root, INPUT_SHEETS)
+                parts = rel.replace('\\', '/').split('/')
+                # e.g. ['weapons', 'sword'] or ['weapons', 'magic'] → subtype from parts[1]
+                if len(parts) >= 2 and parts[0] == 'weapons' and parts[1] in ('sword', 'blunt', 'polearm', 'ranged', 'magic'):
+                    type_name = f"weapon_{parts[1]}"
+            elif type_name and type_name.startswith("weapon_magic"):
+                type_name = "weapon_magic"
+
             v_type = CATEGORY_MAPPING.get(type_name, 'clothes')
             
             if v_type not in packed:
@@ -434,10 +467,16 @@ def main():
             # Recolor mapping
             recolors = data.get('recolors', {})
             material_cat = recolors.get('material', 'all')
+            # Infer material for weapon subtypes that have no recolors definition
+            if material_cat == 'all' and type_name in ('weapon_sword', 'weapon_blunt', 'weapon_polearm'):
+                material_cat = 'metal'
+            elif material_cat == 'all' and type_name == 'weapon_ranged':
+                material_cat = 'cloth'
+            palettes = [material_cat] if material_cat == 'all' else [material_cat, 'all']
             materials = {
                 "primary": {
                     "name": material_cat.title(),
-                    "palettes": [material_cat, "all"]
+                    "palettes": palettes
                 }
             }
             
@@ -576,7 +615,7 @@ def main():
                 }
             else:
                 item_variant = get_item_variant(check_path)
-                sample = find_sample_sprite(check_path, conditions if conditions else None)
+                sample = find_sample_sprite(check_path)
                 default_color = (detect_sprite_color(sample, colors, material_cat) if sample else None) or default_color
 
                 packed[v_type][type_name][item_slug] = {

@@ -48,7 +48,7 @@ export class CharacterCollection extends ItemCollection {
                         children: [
                             {title: 'Shirt/Jacket', type: 'clothes.clothes'},
                             {title: 'Vest', type: 'clothes.vest'},
-                            {title: 'Jacket', type: 'clothes.jacket'},
+                            {title: 'Jacket', type: 'clothes.jacket', companions: ['clothes.jacket_collar', 'clothes.jacket_trim']},
                             {title: 'Armour', type: 'clothes.armour'},
                             {title: 'Sleeves', type: 'clothes.sleeves'},
                             {title: 'Chainmail', type: 'clothes.chainmail'},
@@ -113,17 +113,37 @@ export class CharacterCollection extends ItemCollection {
             },
             equipment: {
                 title: 'Equipment',
-                children: [
-                    {title: 'Weapon', type: 'equipment.weapon'},
-                    {title: 'Magic Crystal', type: 'equipment.weapon_magic_crystal'},
-                    {title: 'Ammo', type: 'equipment.ammo'},
-                    {title: 'Shield', type: 'equipment.shield'},
-                    {title: 'Shield Trim', type: 'equipment.shield_trim'},
-                    {title: 'Shield Paint', type: 'equipment.shield_paint'},
-                    {title: 'Shield Pattern', type: 'equipment.shield_pattern'},
-                    {title: 'Backpack', type: 'equipment.backpack'},
-                    {title: 'Quiver', type: 'equipment.quiver'},
-                ]
+                active: ref('weapons'),
+                tabs: {
+                    weapons: {
+                        title: 'Weapons',
+                        children: [
+                            {title: 'Swords', type: 'equipment.weapon_sword'},
+                            {title: 'Blunt', type: 'equipment.weapon_blunt'},
+                            {title: 'Polearms', type: 'equipment.weapon_polearm'},
+                            {title: 'Ranged', type: 'equipment.weapon_ranged'},
+                            {title: 'Magic', type: 'equipment.weapon_magic'},
+                            {title: 'Tools', type: 'equipment.weapon'},
+                            {title: 'Ammo', type: 'equipment.ammo'},
+                            {title: 'Quiver', type: 'equipment.quiver'},
+                        ]
+                    },
+                    shields: {
+                        title: 'Shields',
+                        children: [
+                            {title: 'Shield', type: 'equipment.shield'},
+                            {title: 'Shield Trim', type: 'equipment.shield_trim'},
+                            {title: 'Shield Paint', type: 'equipment.shield_paint'},
+                            {title: 'Shield Pattern', type: 'equipment.shield_pattern'},
+                        ]
+                    },
+                    gear: {
+                        title: 'Gear',
+                        children: [
+                            {title: 'Backpack', type: 'equipment.backpack'},
+                        ]
+                    }
+                }
             }
         }
     }

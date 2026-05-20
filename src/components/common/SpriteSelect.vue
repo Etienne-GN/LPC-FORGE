@@ -10,7 +10,8 @@ const props = defineProps<{
   type: string,
   title: string,
   refresh: number,
-  collection: ItemCollection
+  collection: ItemCollection,
+  companions?: string[]
 }>()
 
 const emit = defineEmits(['selected'])
@@ -22,6 +23,7 @@ const pickerMaterial = ref<string>('')
 
 function togglePicker(material: string) {
   pickerMaterial.value = pickerMaterial.value === material ? '' : material
+  if (pickerMaterial.value) variantPickerOpen.value = false
 }
 
 function closePicker() {
@@ -43,6 +45,62 @@ async function onColorSelected(colorKey: string) {
   await props.collection.select(selected.value)
   emit('selected', selected)
   closePicker()
+}
+
+// ── variant picker state ─────────────────────────────────────────────────────
+const variantPickerOpen = ref(false)
+
+function toggleVariantPicker() {
+  variantPickerOpen.value = !variantPickerOpen.value
+  if (variantPickerOpen.value) pickerMaterial.value = ''
+}
+
+function closeVariantPicker() {
+  variantPickerOpen.value = false
+}
+
+async function onVariantSelectFromPicker(variant: string) {
+  await onVariantSelect(variant)
+  closeVariantPicker()
+}
+
+// ── companion pickers ─────────────────────────────────────────────────────────
+const companionPickerType = ref<string>('')
+
+function toggleCompanionPicker(type: string) {
+  companionPickerType.value = companionPickerType.value === type ? '' : type
+  if (companionPickerType.value) {
+    pickerMaterial.value = ''
+    variantPickerOpen.value = false
+  }
+}
+
+function closeCompanionPicker() {
+  companionPickerType.value = ''
+}
+
+function companionSwatchColor(type: string): string {
+  const item = props.collection.getSelected(type)
+  if (!item?.variant) return ''
+  return variantCss(item.variant)
+}
+
+function isCompanionSelected(type: string, itemId: string, variant: string): boolean {
+  const sel = props.collection.getSelected(type)
+  return !!sel && sel.id === itemId && sel.variant === variant
+}
+
+async function onCompanionSelect(type: string, itemId: string, variant: string) {
+  const item = props.collection.getItems(itemId) as Item
+  item.setVariant(variant)
+  await props.collection.select(item)
+  emit('selected', item)
+}
+
+async function onCompanionDeselect(type: string) {
+  props.collection.unselect(type)
+  emit('selected', null)
+  closeCompanionPicker()
 }
 
 // ── variant state ────────────────────────────────────────────────────────────
@@ -87,7 +145,7 @@ function swatchColor(material: any) {
 
 function hasNoSwatches() {
   return !selected.value || !selected.value.id ||
-    (Object.keys(selected.value.materials).length === 0 && !selected.value.variants?.length)
+    (Object.keys(selected.value.materials).length === 0 && !selected.value.variants?.length && !props.companions?.length)
 }
 
 function getOptions() {
@@ -96,6 +154,7 @@ function getOptions() {
 
 async function onSelect(itemId: string) {
   closePicker()
+  closeVariantPicker()
   if (itemId) {
     selected.value = await props.collection.select(itemId)
   } else {
@@ -132,17 +191,81 @@ watch(() => props.refresh, () => {
           <div class="h-full rounded" :style="{ backgroundColor: swatchColor(matKey) }"></div>
         </button>
 
-        <!-- pre-colored variants: one tiny swatch per variant -->
+        <!-- pre-colored variants: single swatch opens picker menu -->
         <template v-if="selected.variants && selected.variants.length > 1">
-          <button v-for="(v, i) in selected.variants" :key="v"
-                  @click="onVariantSelect(v)" :title="v"
-                  class="min-w-5 w-5 p-0.5 bg-zinc-700"
-                  :class="{ 'rounded-r': i === selected.variants.length - 1,
-                             'outline outline-1 outline-amber-400': selected.variant === v }">
-            <div class="h-full w-full rounded" :style="{ backgroundColor: variantCss(v) }"></div>
+          <button @click="toggleVariantPicker"
+                  :title="selected.variant ?? ''"
+                  class="min-w-8 w-8 p-1 bg-zinc-700"
+                  :class="{ 'bg-zinc-500': variantPickerOpen, 'rounded-r': !companions?.length }">
+            <div class="h-full rounded" :style="{ backgroundColor: variantCss(selected.variant ?? '') }"></div>
+          </button>
+        </template>
+
+        <!-- companion swatches -->
+        <template v-if="companions?.length">
+          <button v-for="(compType, ci) in companions" :key="compType"
+                  @click="toggleCompanionPicker(compType)"
+                  :title="compType.split('.').pop()"
+                  class="min-w-8 w-8 p-1 bg-zinc-700"
+                  :class="{ 'rounded-r': ci === companions.length - 1, 'bg-zinc-500': companionPickerType === compType }">
+            <div class="h-full rounded border border-zinc-500"
+                 :style="{ backgroundColor: companionSwatchColor(compType) || 'transparent' }"></div>
           </button>
         </template>
       </template>
+    </div>
+
+    <!-- variant picker menu -->
+    <div v-if="variantPickerOpen && selected?.variants && selected.variants.length > 1"
+         class="mb-2 rounded border border-zinc-600 bg-zinc-800 text-zinc-200 text-xs overflow-hidden">
+      <div class="flex items-center px-2 py-1 bg-zinc-700 border-b border-zinc-600">
+        <span class="font-bold flex-grow">Color</span>
+        <button @click="closeVariantPicker" class="text-zinc-400 hover:text-zinc-100 ml-2">
+          <i class="mdi mdi-close"></i>
+        </button>
+      </div>
+      <div class="max-h-52 overflow-y-auto scrollbar-thin">
+        <div v-for="v in selected.variants" :key="v"
+             class="flex items-center px-2 py-1 cursor-pointer hover:bg-zinc-600"
+             :class="{ 'bg-zinc-600': selected.variant === v }"
+             @click="onVariantSelectFromPicker(v)">
+          <span class="flex-grow capitalize">{{ v.replace(/_/g, ' ') }}</span>
+          <div class="w-6 h-4 rounded flex-shrink-0 border border-zinc-600"
+               :style="{ backgroundColor: variantCss(v) }"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- companion picker menu -->
+    <div v-if="companionPickerType"
+         class="mb-2 rounded border border-zinc-600 bg-zinc-800 text-zinc-200 text-xs overflow-hidden">
+      <div class="flex items-center px-2 py-1 bg-zinc-700 border-b border-zinc-600">
+        <span class="font-bold flex-grow capitalize">{{ companionPickerType.split('.').pop()?.replace(/_/g, ' ') }}</span>
+        <button @click="closeCompanionPicker" class="text-zinc-400 hover:text-zinc-100 ml-2">
+          <i class="mdi mdi-close"></i>
+        </button>
+      </div>
+      <div class="max-h-52 overflow-y-auto scrollbar-thin">
+        <div class="flex items-center px-2 py-1 cursor-pointer hover:bg-zinc-600"
+             :class="{ 'bg-zinc-600': !collection.getSelected(companionPickerType) }"
+             @click="onCompanionDeselect(companionPickerType)">
+          <span class="italic text-zinc-400">None</span>
+        </div>
+        <template v-for="(item, itemId) in collection.getOptions(companionPickerType)" :key="itemId">
+          <div v-if="item.variants?.length > 1">
+            <div class="px-2 pt-2 pb-1 text-zinc-400 font-semibold">{{ item.name }}</div>
+            <div class="flex flex-wrap gap-1 px-2 pb-2">
+              <button v-for="v in item.variants" :key="v"
+                      @click="onCompanionSelect(companionPickerType, item.id, v)"
+                      :title="v"
+                      class="w-6 h-6 p-0.5 bg-zinc-700 rounded"
+                      :class="{ 'outline outline-1 outline-amber-400': isCompanionSelected(companionPickerType, item.id, v) }">
+                <div class="w-full h-full rounded" :style="{ backgroundColor: variantCss(v) }"></div>
+              </button>
+            </div>
+          </div>
+        </template>
+      </div>
     </div>
 
     <!-- inline color picker menu, opens below the row -->
