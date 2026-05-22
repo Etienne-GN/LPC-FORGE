@@ -32,8 +32,6 @@ function getClasses():string {
       return colorsSecondary + ' py-1 px-3 disabled:bg-zinc-800 disabled:text-zinc-500 text-zinc-200';
     case 'secondary-square':
       return colorsSecondary + squareSize + ' aspect-square leading-none disabled:bg-zinc-800 disabled:text-zinc-500 text-zinc-200';
-    case 'danger':
-      return 'bg-red-800 hover:bg-red-700 py-1 px-3 text-zinc-200';
   }
 
   return ''

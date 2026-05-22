@@ -50,10 +50,6 @@ export abstract class ItemCollection {
     findItem(id:string) {
         const [type, category, index]:string[] = id.split('.')
 
-        if (!this.items[type] || !this.items[type][category]) {
-            return undefined;
-        }
-
         return this.items[type][category][index]
     }
 
@@ -106,7 +102,18 @@ export abstract class ItemCollection {
     }
 
     getOptions(key:string):{[key:string]:Item} {
-        return (this.getItems(key) as {[key:string]:Item}) ?? {}
+        const out:{[key:string]:Item} = {}
+        const options:{[key:string]:Item} = this.getItems(key) as {[key:string]:Item};
+
+        for (const i in options) {
+            const part = options[i];
+
+            if(part.isAllowed()) {
+                out[i] = options[i]
+            }
+        }
+
+        return out
     }
 
     getFilteredOptions(type:string) {
@@ -148,10 +155,6 @@ export abstract class ItemCollection {
             item = this.getItems(id) as Item
         }
 
-        if (!item) {
-            throw new Error(`Item not found: ${id}`);
-        }
-
         const [type, category, index]:string[] = id.split('.')
 
         if(!(type in this.selected)) {
@@ -178,9 +181,7 @@ export abstract class ItemCollection {
 
         const [type, category, index]:string[] = id.split('.')
 
-        if (this.selected[type]) {
-            delete this.selected[type][category]
-        }
+        delete this.selected[type][category]
     }
 
     getSelected(key:string):Item|undefined {
@@ -213,11 +214,7 @@ export abstract class ItemCollection {
         this.selected = {};
 
         for(const i in data) {
-            const item:Item|undefined = this.findItem(i)
-
-            if (!item) {
-                continue
-            }
+            const item:Item = this.findItem(i)
 
             for(const material in data[i].colors) {
                 item.colors.set(material, data[i].colors[material])
@@ -264,7 +261,6 @@ export abstract class ItemCollection {
         return await Promise.all(
             Object.values(this.selected)
                 .flatMap(category => Object.values(category))
-                .filter(item => item !== undefined && item !== null)
                 .map(item => item.colorize().then(() => item.colors.update()))
         );
     }

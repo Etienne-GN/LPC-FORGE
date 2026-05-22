@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import {type Ref, ref, onMounted} from "vue";
+import {type Ref, ref} from "vue";
 
 import SideBar from "@/components/ui/SideBar.vue";
 import ShortBar from "@/components/ui/ShortBar.vue";
 import UiButton from "@/components/ui/Button.vue"
 import PoseBar from "@/components/ui/PoseBar.vue";
 
+import ColorSelect from "@/components/common/ColorSelect.vue";
 import AnimationPlayer from "@/components/common/AnimationPlayer.vue";
 import AnimationMultiPlayer from "@/components/common/AnimationMultiPlayer.vue";
 import SavingsCard from "@/components/common/SavingsCard.vue";
@@ -19,22 +20,56 @@ import {HorseRenderer} from "@/services/HorseRenderer";
 
 import {ColorCollection} from "@/types/ColorCollection";
 import {HorseCollection} from "@/types/HorseCollection";
+import {Item} from "@/types/Item";
 
-import vitruvian_colors from '@/data/vitruvian_colors.json'
-import horse_data from '@/data/horse.json'
+import raw_data from '@/data/packed.json'
+import raw_colors from '@/data/colors.json'
+
 
 const colors:Ref<ColorCollection> = ref(new ColorCollection())
-colors.value.initColors(vitruvian_colors)
+colors.value.initColors(raw_colors)
 const collection:Ref<HorseCollection> = ref(new HorseCollection(colors.value)) as Ref<HorseCollection>
-collection.value.initItems(horse_data);
+collection.value.initItems(raw_data);
 
 const renderer:HorseRenderer = new HorseRenderer(collection.value);
 const spriteCanvas = ref()
 const refresh:Ref<number> = ref(0)
+const sideBar:Ref<any> = ref()
 
 const leftTab:Ref<string> = ref('anatomy');
 const rightTab:Ref<string> = ref('savings');
 const centerTab:Ref<string> = ref('preview-multiple');
+
+const currentColorPicker:Ref<boolean> = ref(false)
+const currentColorItem:Ref<Item | null> = ref(null)
+const currentColorMaterial:Ref<string> = ref('')
+
+function onToggleColorSelector(item:Item, material:string) {
+  currentColorPicker.value = !!item;
+  currentColorItem.value = item;
+  currentColorMaterial.value = material;
+}
+
+async function onColorSelected(color:string) {
+  if(!currentColorItem.value) {
+    return
+  }
+
+  currentColorItem.value?.colors.set(currentColorMaterial.value, color);
+  await collection.value.select(currentColorItem.value)
+  renderer.draw();
+  refresh.value++;
+
+  onColorPickerClosed();
+}
+
+function onColorPickerClosed() {
+  currentColorPicker.value = false
+  currentColorItem.value = null
+  currentColorMaterial.value = ''
+
+  sideBar.value.$el.scrollTo(0, 0)
+}
 
 function jumpToNextActiveAnimation() {
   if(collection.value.isAnimationDisabled(currentPose.value)) {
@@ -49,10 +84,6 @@ async function onRefresh() {
 }
 
 const currentPose = ref('walk')
-
-onMounted(() => {
-  renderer.draw()
-})
 </script>
 
 <template>
@@ -62,8 +93,9 @@ onMounted(() => {
       <ui-button @click="leftTab = 'clothes'" :disabled="!collection.isBodySelected()" :active="leftTab == 'clothes'" ui="primary-square" title="Clothes" icon="hanger"></ui-button>
     </short-bar>
 
-    <side-bar>
-      <sprite-card @selected="onRefresh" :refresh="refresh" :collection="collection" :tab="leftTab"></sprite-card>
+    <side-bar ref="sideBar">
+      <sprite-card @selected="onRefresh" @toggle-color-selector="onToggleColorSelector" :hidden="currentColorPicker" :refresh="refresh" :collection="collection" :tab="leftTab"></sprite-card>
+      <color-select @selected="onColorSelected" @close="onColorPickerClosed" :collection="collection" :item="currentColorItem" :material="currentColorMaterial" :class="{hidden: !currentColorPicker}" class="bg-zinc-900 text-zinc-400"></color-select>
     </side-bar>
 
     <main class="flex flex-col overflow-hidden flex-1 gap-4 bg-zinc-800">

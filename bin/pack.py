@@ -1,642 +1,303 @@
 import os
 import json
-import glob
 from PIL import Image
 import base64
 from io import BytesIO
 
-# Paths
-UNIVERSAL_ROOT = '../Universal-LPC-Spritesheet-Character-Generator'
-INPUT_SHEETS = os.path.join(UNIVERSAL_ROOT, 'sheet_definitions')
-INPUT_PALETTES = os.path.join(UNIVERSAL_ROOT, 'palette_definitions')
-INPUT_SPRITES = os.path.join(UNIVERSAL_ROOT, 'spritesheets')
-OUTPUT_PACKED = 'src/data/packed.json'
-OUTPUT_PALETTES = 'src/data/palettes.json'
-OUTPUT_COLORS = 'src/data/colors.json'
+input_path = '../public/spritesheets'
+output_path = '../src/data/packed.json'
 
-# Mappings
-CATEGORY_MAPPING = {
-    # anatomy
-    "body": "anatomy",
-    "head": "anatomy",
-    "hair": "anatomy",
-    "hairextl": "anatomy",
-    "hairextr": "anatomy",
-    "ponytail": "anatomy",
-    "updo": "anatomy",
-    "wrinkles": "anatomy",
-    "eyes": "anatomy",
-    "ears": "anatomy",
-    "ears_inner": "anatomy",
-    "furry_ears": "anatomy",
-    "furry_ears_skin": "anatomy",
-    "nose": "anatomy",
-    "beards": "anatomy",
-    "beard": "anatomy",
-    "mustache": "anatomy",
-    "shadow": "anatomy",
-    "tails": "anatomy",
-    "tail": "anatomy",
-    "wings": "anatomy",
-    "wings_dots": "anatomy",
-    "wings_edge": "anatomy",
-    "fins": "anatomy",
-    "horns": "anatomy",
-    "eyebrows": "anatomy",
-    "expression": "anatomy",
-    "expression_crying": "anatomy",
-    "wheelchair": "anatomy",
-    "prosthesis_hand": "anatomy",
-    "prosthesis_leg": "anatomy",
-    "facial_mask": "anatomy",
-    "facial_eyes": "anatomy",
-    "facial_right_trim": "anatomy",
-    "facial_left_trim": "anatomy",
-    "facial_left": "anatomy",
-    "facial_right": "anatomy",
-    # clothes
-    "legs": "clothes",
-    "pants": "clothes",
-    "shorts": "clothes",
-    "skirts": "clothes",
-    "apron": "clothes",
-    "torso": "clothes",
-    "shirts": "clothes",
-    "armor": "clothes",
-    "armour": "clothes",
-    "clothes": "clothes",
-    "vest": "clothes",
-    "jacket": "clothes",
-    "jacket_collar": "clothes",
-    "jacket_trim": "clothes",
-    "jacket_pockets": "clothes",
-    "sleeves": "clothes",
-    "feet": "clothes",
-    "shoes": "clothes",
-    "shoes_toe": "clothes",
-    "socks": "clothes",
-    "boots": "clothes",
-    "dress": "clothes",
-    "dresses": "clothes",
-    "dress_trim": "clothes",
-    "dress_sleeves": "clothes",
-    "dress_sleeves_trim": "clothes",
-    "overalls": "clothes",
-    "shoulders": "clothes",
-    "bauldron": "clothes",
-    "belt": "clothes",
-    "sash": "clothes",
-    "sash_tie": "clothes",
-    "buckles": "clothes",
-    "arms": "clothes",
-    "cape": "clothes",
-    "cape_trim": "clothes",
-    "headwear": "clothes",
-    "hat": "clothes",
-    "hat_trim": "clothes",
-    "hat_accessory": "clothes",
-    "hat_buckle": "clothes",
-    "hat_overlay": "clothes",
-    "helmets": "clothes",
-    "gloves": "clothes",
-    "bracers": "clothes",
-    "wrists": "clothes",
-    "neck": "clothes",
-    "necklace": "clothes",
-    "charm": "clothes",
-    "waist": "clothes",
-    "ring": "clothes",
-    "earrings": "clothes",
-    "earring_left": "clothes",
-    "earring_right": "clothes",
-    "accessory": "clothes",
-    "bandana": "clothes",
-    "bandana_overlay": "clothes",
-    "visor": "clothes",
-    "headcover": "clothes",
-    "headcover_rune": "clothes",
-    "hairtie": "clothes",
-    "hairtie_rune": "clothes",
-    "chainmail": "clothes",
-    "bandages": "clothes",
-    "backpack_straps": "clothes",
-    "cargo": "clothes",
-    # equipment
-    "weapons": "equipment",
-    "weapon": "equipment",
-    "weapon_sword": "equipment",
-    "weapon_blunt": "equipment",
-    "weapon_polearm": "equipment",
-    "weapon_ranged": "equipment",
-    "weapon_magic": "equipment",
-    "weapon_magic_crystal": "equipment",
-    "shield": "equipment",
-    "shields": "equipment",
-    "shield_trim": "equipment",
-    "shield_paint": "equipment",
-    "shield_pattern": "equipment",
-    "backpack": "equipment",
-    "quiver": "equipment",
-    "ammo": "equipment",
-    "tools": "equipment",
-    # injuries
-    "wounds": "injuries",
-    "wound_eye_right": "injuries",
-    "wound_arm": "injuries",
-    "wound_eye_left": "injuries",
-    "wound_ribs": "injuries",
-    "wound_mouth": "injuries",
-    "wound_brain": "injuries",
-}
-
-ANIMATION_MAPPING = {
-    "spellcast": "spell",
-    "1h_backslash": "backslash",
-    "tool_rod": "rod",
-    "thrust": "thrust",
-    "walk": "walk",
-    "slash": "slash",
-    "shoot": "shoot",
-    "hurt": "hurt",
-    "idle": "idle"
-}
-
-SKIP_ANIMATIONS = ["run", "jump", "sit", "emote", "climb", "watering", "combat", "1h_slash", "1h_halfslash"]
-
-def get_item_variant(item_path):
-    """
-    Returns the variant name when the item uses subdirectory animation format
-    (i.e. {path}/{anim}/{variant}.png instead of {path}/{anim}.png).
-    Only returns a name when every animation dir contains exactly one PNG,
-    confirming this is a single-variant subdirectory layout.
-    """
-    sprite_dir = os.path.join(INPUT_SPRITES, item_path)
-    if not os.path.isdir(sprite_dir):
-        return None
-    variant = None
-    for anim_key in list(ANIMATION_MAPPING.keys()):
-        anim_dir = os.path.join(sprite_dir, anim_key)
-        if os.path.isdir(anim_dir):
-            pngs = [f for f in os.listdir(anim_dir) if f.endswith('.png')]
-            if len(pngs) == 1:
-                candidate = pngs[0][:-4]
-                if variant is None:
-                    variant = candidate
-                elif variant != candidate:
-                    return None  # inconsistent — not a simple single-variant layout
-            else:
-                return None  # multiple pre-colored variants — not supported by this path
-    return variant
-
-def hex_to_rgba_simple(hex_str):
-    hex_str = hex_str.lstrip('#')
-    if len(hex_str) == 3:
-        hex_str = ''.join([c*2 for c in hex_str])
-    r = int(hex_str[0:2], 16)
-    g = int(hex_str[2:4], 16)
-    b = int(hex_str[4:6], 16)
-    a = 255
-    if len(hex_str) == 8:
-        a = int(hex_str[6:8], 16)
-    return [r, g, b, a]
-
-def detect_sprite_color(sprite_path, colors_data, material_cat):
-    """Detect the base color of a sprite by matching its pixels against palette entries."""
-    if not os.path.exists(sprite_path):
-        return None
-    try:
-        img = Image.open(sprite_path).convert('RGBA')
-        pixels = img.getdata()
-        unique_pixels = set()
-        for p in pixels:
-            if p[3] > 0:
-                unique_pixels.add((p[0], p[1], p[2]))
-
-        scores = {}
-        for color_id, color_info in colors_data.items():
-            if material_cat != 'all' and material_cat not in color_info.get('materials', []):
-                continue
-            for entry in color_info['palette']:
-                key = (entry[0], entry[1], entry[2])
-                if key in unique_pixels:
-                    scores[color_id] = scores.get(color_id, 0) + 1
-
-        if scores:
-            best = max(scores.items(), key=lambda x: x[1])
-            if best[1] >= 2:
-                return best[0]
-        return None
-    except Exception:
-        return None
-
-
-def get_multi_variants(check_path):
-    """
-    Returns sorted list of variant names if item uses {path}/{anim}/{variant}.png
-    with multiple variants. Returns None otherwise.
-    """
-    sprite_dir = os.path.join(INPUT_SPRITES, check_path)
-    if not os.path.isdir(sprite_dir):
-        return None
-    for anim_key in list(ANIMATION_MAPPING.keys()):
-        anim_dir = os.path.join(sprite_dir, anim_key)
-        if os.path.isdir(anim_dir):
-            pngs = sorted([f[:-4] for f in os.listdir(anim_dir)
-                           if f.endswith('.png') and not f.startswith('_')])
-            if len(pngs) > 1:
-                return pngs
-            return None  # single file — handled by get_item_variant
-    return None
-
-
-def find_sample_sprite(item_path):
-    """Find a usable PNG for color detection, trying several path formats."""
-    sp = os.path.join(INPUT_SPRITES, item_path)
-    preferred_anims = ['walk', 'idle', 'thrust', 'spellcast', 'slash']
-
-    # 1. Flat animation PNGs: {sp}/{anim}.png
-    for anim in preferred_anims:
-        candidate = os.path.join(sp, f"{anim}.png")
-        if os.path.exists(candidate):
-            return candidate
-
-    # 2. Variant subdir animation: {sp}/{anim}/{variant}.png
-    for anim in preferred_anims:
-        anim_dir = os.path.join(sp, anim)
-        if os.path.isdir(anim_dir):
-            pngs = sorted([f for f in os.listdir(anim_dir) if f.endswith('.png') and not f.startswith('_')])
-            if pngs:
-                return os.path.join(anim_dir, pngs[0])
-
-    # 3. Path IS the animation dir (e.g. dragonspear/foreground/walk/) — any PNG inside
-    if os.path.isdir(sp):
-        pngs = sorted([f for f in os.listdir(sp) if f.endswith('.png') and not f.startswith('_')])
-        if pngs:
-            return os.path.join(sp, pngs[0])
-
-    # 4. Any PNG directly in the parent dir (e.g. club/club.png when path is club/)
-    parent = os.path.dirname(sp.rstrip('/'))
-    if os.path.isdir(parent):
-        pngs = sorted([f for f in os.listdir(parent) if f.endswith('.png') and not f.startswith('_')])
-        if pngs:
-            return os.path.join(parent, pngs[0])
-
-    return None
-
-
-def get_preview_image(item_path, animations, type_name):
-    # Try to find a suitable animation for preview
-    preferred = ['walk', 'idle', 'thrust', 'spellcast', 'slash']
-    found_anim = None
-    for anim in preferred:
-        if anim in animations:
-            # Check if file exists
-            if os.path.exists(os.path.join(INPUT_SPRITES, item_path, f"{anim}.png")):
-                found_anim = anim
-                break
-    
-    if not found_anim and animations:
-        found_anim = animations[0]
-        if not os.path.exists(os.path.join(INPUT_SPRITES, item_path, f"{found_anim}.png")):
-            found_anim = None
-
-    if not found_anim:
-        # Try subdirectories (for items with conditions)
-        # We'll just pick 'male' or 'male/fg' as a guess if it exists
-        guesses = ['male', 'male/fg', 'fg']
-        for guess in guesses:
-            for anim in preferred:
-                if os.path.exists(os.path.join(INPUT_SPRITES, item_path, guess, f"{anim}.png")):
-                    item_path = os.path.join(item_path, guess)
-                    found_anim = anim
-                    break
-            if found_anim: break
-
-    if not found_anim:
-        return ""
-
-    img_path = os.path.join(INPUT_SPRITES, item_path, f"{found_anim}.png")
-    try:
-        img = Image.open(img_path)
-        # Assume 64x64 tiles for now, Row 2 (Down), Col 0
+def get_preview_image(item, base_path):
         tile_size = 64
-        if img.height >= 128 and img.width >= 64:
-             # Check if it's a large sprite
-             pass # We'll just take the top-left 64x64 for now
-        
-        row = 2 # Down
-        if img.height < (row + 1) * tile_size:
+        row = 2
+        col = 0
+
+        color1 = ''
+        color2 = ''
+        color3 = ''
+        color4 = ''
+
+        path = ''
+
+        if os.path.exists(os.path.join(base_path, item['path'], 'walk.png')):
+            path = os.path.join(base_path, item['path'], 'walk.png')
+
+        elif os.path.exists(os.path.join(base_path, item['path'], 'male', 'walk.png')):
+            path = os.path.join(base_path, item['path'], 'male', 'walk.png')
+
+        elif os.path.exists(os.path.join(base_path, item['path'], 'female', 'walk.png')):
+            path = os.path.join(base_path, item['path'], 'female', 'walk.png')
+
+        elif os.path.exists(os.path.join(base_path, item['path'], 'child', 'walk.png')):
+            path = os.path.join(base_path, item['path'], 'child', 'walk.png')
+
+        elif os.path.exists(os.path.join(base_path, item['path'], 'fg', 'walk.png')):
+            path = os.path.join(base_path, item['path'], 'fg', 'walk.png')
+
+        elif os.path.exists(os.path.join(base_path, item['path'], 'male', 'fg', 'walk.png')):
+            path = os.path.join(base_path, item['path'], 'male', 'fg', 'walk.png')
+
+        elif os.path.exists(os.path.join(base_path, item['path'], 'female', 'fg', 'walk.png')):
+            path = os.path.join(base_path, item['path'], 'female', 'fg', 'walk.png')
+
+        elif os.path.exists(os.path.join(base_path, item['path'], 'child', 'fg', 'walk.png')):
+            path = os.path.join(base_path, item['path'], 'child', 'fg', 'walk.png')
+
+        elif os.path.exists(os.path.join(base_path, item['path'], 'male', 'thrust.png')):
+            path = os.path.join(base_path, item['path'], 'male', 'thrust.png')
+
+        elif os.path.exists(os.path.join(base_path, item['path'], 'fg', 'slash.png')):
+            path = os.path.join(base_path, item['path'], 'fg', 'slash.png')
+
+        elif os.path.exists(os.path.join(base_path, item['path'], 'shoot.png')):
+            path = os.path.join(base_path, item['path'], 'shoot.png')
+
+        elif os.path.exists(os.path.join(base_path, item['path'], 'fg', 'shoot.png')):
+            path = os.path.join(base_path, item['path'], 'fg', 'shoot.png')
+
+        elif os.path.exists(os.path.join(base_path, item['path'], 'backslash.png')):
+            path = os.path.join(base_path, item['path'], 'backslash.png')
+
+        elif os.path.exists(os.path.join(base_path, item['path'], 'fg', 'backslash.png')):
+            path = os.path.join(base_path, item['path'], 'fg', 'backslash.png')
+
+        elif os.path.exists(os.path.join(base_path, item['path'], 'whip.png')):
+            path = os.path.join(base_path, item['path'], 'whip.png')
+
+        elif os.path.exists(os.path.join(base_path, item['path'], 'fg', 'whip.png')):
+            path = os.path.join(base_path, item['path'], 'fg', 'whip.png')
+
+        else:
+            print(item)
+            print(os.path.join(base_path, item['path'], 'male', 'walk.png'))
+            exit()
+
+
+        if 'primary' in item['colors']:
+            color1 = item['colors']['primary']
+        if 'secondary' in item['colors']:
+            color2 = item['colors']['secondary']
+        if 'tertiary' in item['colors']:
+            color3 = item['colors']['tertiary']
+        if 'quaternary' in item['colors']:
+            color4 = item['colors']['quaternary']
+
+        if item['id'] in ['anatomy.tail.lizard', 'anatomy.wings.lizard']:
             row = 0
-            
-        crop = img.crop((0, row * tile_size, tile_size, (row + 1) * tile_size))
-        
-        buffered = BytesIO()
-        crop.save(buffered, format="PNG")
-        return "data:image/png;base64," + base64.b64encode(buffered.getvalue()).decode()
-    except Exception as e:
-        print(f"Error generating preview for {img_path}: {e}")
-        return ""
 
-def process_palettes():
-    all_colors = {}
-    palettes_by_cat = {}
-    
-    for root, dirs, files in os.walk(INPUT_PALETTES):
-        cat = os.path.basename(root)
-        if cat == 'palette_definitions': continue
-        
-        for file in files:
-            if file.startswith('meta_') or not file.endswith('.json'):
-                continue
-            
-            with open(os.path.join(root, file), 'r') as f:
-                data = json.load(f)
-                
-            palette_name = file.replace('.json', '').replace(f"{cat}_", "")
-            if cat not in palettes_by_cat:
-                palettes_by_cat[cat] = []
-            if palette_name not in palettes_by_cat[cat]:
-                palettes_by_cat[cat].append(palette_name)
-                
-            for color_name, hex_list in data.items():
-                rgba_list = [hex_to_rgba_simple(h) for h in hex_list]
-                full_color_name = f"{color_name}" # We'll try to keep it simple first
-                
-                if full_color_name not in all_colors:
-                    all_colors[full_color_name] = {
-                        "name": color_name.replace('_', ' ').title(),
-                        "palette": rgba_list,
-                        "materials": [cat]
-                    }
-                else:
-                    if cat not in all_colors[full_color_name]["materials"]:
-                        all_colors[full_color_name]["materials"].append(cat)
-                        
-    return all_colors, palettes_by_cat
+        if item['id'] in ['clothes.helmet_accessory.horns1', 'clothes.helmet_accessory.horns2', 'clothes.helmet_accessory.horns3', 'equipment.misc.whip']:
+            path = path.replace('fg', 'bg')
 
-def main():
-    print("Processing palettes...")
-    colors, palettes_by_cat = process_palettes()
-    
-    with open(OUTPUT_COLORS, 'w') as f:
-        json.dump(colors, f, indent=2)
-    
-    with open(OUTPUT_PALETTES, 'w') as f:
-        json.dump(palettes_by_cat, f, indent=2)
-        
-    print("Processing sheets...")
-    packed = {}
-    
-    for root, dirs, files in os.walk(INPUT_SHEETS):
-        for file in files:
-            if file.startswith('meta_') or not file.endswith('.json'):
+        if item['id'] in ['equipment.bows.great', 'equipment.bows.normal', 'equipment.bows.recurve', 'equipment.tools.axe', 'equipment.tools.hammer', 'equipment.tools.pickaxe']:
+            path = path.replace('fg', 'bg')
+            tile_size = 128
+            row = 0
+
+        if item['id'] in [
+            'equipment.misc.boomerang',
+            'equipment.misc.club',
+            'equipment.misc.flail',
+            'equipment.spears.dragon',
+            'equipment.spears.longspear',
+            'equipment.spears.trident',
+            'equipment.staffs.crystal',
+            'equipment.staffs.crystal_on',
+            'equipment.staffs.wooden',
+            'equipment.staffs.wooden_on',
+            'equipment.swords.scimitar'
+            'equipment.misc.whip',
+        ]:
+            tile_size = 192
+
+        if 'clothes.cape' in item['id']:
+            row = 0
+
+        if item['id'] == 'equipment.misc.whip':
+            tile_size = 192
+            row = 0
+
+        if item['id'] in ['equipment.swords.katana', 'equipment.swords.longsword_alt', 'equipment.swords.scimitar']:
+            tile_size = 128
+            row = 2
+
+        if 'horse' in item['id']:
+            tile_size = 128
+            row = 1
+
+        if 'horse.body' in item['id']:
+            path = path.replace('fg', 'bg')
+
+        return extract_tile(path, tile_size, row, col, color1, color2, color3, color4)
+
+
+def get_color_mask(color):
+    if not color:
+        return None
+
+    if color == 'anatomy.body' or color == 'anatomy.head':
+        color = 'ivory'
+
+    color = color.capitalize()
+
+    with open('./Ramps.json', 'r') as file:
+        json_data = json.load(file)
+
+    mask = None
+
+
+    if 'Eyes' in color:
+        mask = json_data['Eyes'][color.replace('Eyes_', '').capitalize()]
+    else:
+        if color in json_data['Skin']:
+            mask = json_data['Skin'][color]
+        elif color in json_data['Clothing']:
+            mask = json_data['Clothing'][color]
+        elif color in json_data['Metal']:
+            mask = json_data['Metal'][color]
+
+    if not mask:
+        print(f'Color not found ({color})')
+        return None
+
+    color_mask = []
+
+    for color_entry in mask:
+        r = round(color_entry['r'] * 255)
+        g = round(color_entry['g'] * 255)
+        b = round(color_entry['b'] * 255)
+        color_mask.append('#%02x%02x%02x' % (r, g, b))
+
+    return color_mask
+
+def colorize(original_image, color1, color2=None, color3=None, color4=None):
+
+    color_mask = [
+        get_color_mask(color1),
+        get_color_mask(color2),
+        get_color_mask(color3),
+        get_color_mask(color4)
+    ]
+
+    width, height = original_image.size
+
+
+    for x in range(width):
+
+        for y in range(height):
+            current_color = original_image.getpixel((x, y))
+
+            if current_color[3] == 0:
+                original_image.putpixel((x, y), (0, 0, 0, 0))
                 continue
-                
-            file_path = os.path.join(root, file)
-            with open(file_path, 'r') as f:
+
+            hex_color = '#%02x%02x%02x' % current_color[:3]
+
+
+            for i in range(4):
+                original_colors = [
+                    f'#ff0{i}00',
+                    f'#ff0{i}01',
+                    f'#ff0{i}02',
+                    f'#ff0{i}03',
+                    f'#ff0{i}04',
+                    f'#ff0{i}05'
+                ]
+                index = original_colors.index(hex_color) if hex_color in original_colors else -1
+
+                if index != -1:
+
+                    new_colors = color_mask[i]
+                    new_hex_color = new_colors[index]
+                    r, g, b = tuple(int(new_hex_color[i:i + 2], 16) for i in (1, 3, 5))
+                    original_image.putpixel((x, y), (r, g, b, current_color[3]))
+
+
+    return original_image
+
+def find_object_bounds(image):
+    image_data = image.getdata()
+    image_width, image_height = image.size
+    min_x = image_width
+    max_x = 0
+    min_y = image_height
+    max_y = 0
+
+    for y in range(image_height):
+        for x in range(image_width):
+            alpha = image_data[y * image_width + x][3]
+            if alpha != 0:
+                min_x = min(min_x, x)
+                max_x = max(max_x, x)
+                min_y = min(min_y, y)
+                max_y = max(max_y, y)
+
+    return min_x, min_y, max_x, max_y
+
+def center_object(image):
+    image_width, image_height = image.size
+    min_x, min_y, max_x, max_y = find_object_bounds(image)
+    object_width = max_x - min_x + 1
+    object_height = max_y - min_y + 1
+    new_x = (image_width - object_width) // 2 - min_x
+    new_y = (image_height - object_height) // 2 - min_y
+    new_image = Image.new("RGBA", (image_width, image_height), (0, 0, 0, 0))
+    new_image.paste(image, (new_x, new_y), image)
+
+    return new_image
+
+def extract_tile(spritesheet_path, tile_size, row, column, color1, color2, color3, color4):
+    spritesheet = Image.open(spritesheet_path)
+    left = column * tile_size
+    top = row * tile_size
+    right = left + tile_size
+    bottom = top + tile_size
+    tile = spritesheet.crop((left, top, right, bottom))
+    tile = colorize(tile, color1, color2, color3, color4)
+    tile = center_object(tile)
+    image_io = BytesIO()
+    tile.save(image_io, format='PNG')
+    image_io.seek(0)
+    base64_image = base64.b64encode(image_io.read()).decode('utf-8')
+    data_url = f'data:image/png;base64,{base64_image}'
+
+    return data_url
+
+def merge_data(folder_path, result_dict, full):
+    for filename in os.listdir(folder_path):
+        filepath = os.path.join(folder_path, filename)
+
+        if os.path.isdir(filepath):
+            merge_data(filepath, result_dict, full)
+        elif filename == "data.json":
+            with open(filepath, 'r') as json_file:
                 try:
-                    data = json.load(f)
-                except:
-                    print(f"Failed to load {file_path}")
-                    continue
-            
-            type_name = data.get('type_name')
-            if not type_name:
-                # Guess from path
-                rel_path = os.path.relpath(root, INPUT_SHEETS)
-                type_name = rel_path.split(os.sep)[0]
-
-            # Remap weapon subtypes using their directory in sheet_definitions
-            if type_name == "weapon":
-                rel = os.path.relpath(root, INPUT_SHEETS)
-                parts = rel.replace('\\', '/').split('/')
-                # e.g. ['weapons', 'sword'] or ['weapons', 'magic'] → subtype from parts[1]
-                if len(parts) >= 2 and parts[0] == 'weapons' and parts[1] in ('sword', 'blunt', 'polearm', 'ranged', 'magic'):
-                    type_name = f"weapon_{parts[1]}"
-            elif type_name and type_name.startswith("weapon_magic"):
-                type_name = "weapon_magic"
-
-            v_type = CATEGORY_MAPPING.get(type_name, 'clothes')
-            
-            if v_type not in packed:
-                packed[v_type] = {}
-            if type_name not in packed[v_type]:
-                packed[v_type][type_name] = {}
-                
-            # Animation mapping and verification
-            raw_anims = data.get('animations', [])
-
-            def filter_poses(item_path):
-                valid_poses = []
-                anims_to_check = raw_anims if raw_anims else []
-
-                for a in anims_to_check:
-                    if a in SKIP_ANIMATIONS:
-                        continue
-                    sprite_dir = os.path.join(INPUT_SPRITES, item_path)
-                    # Support both flat format (walk.png) and subdirectory format (walk/)
-                    png_exists = os.path.exists(os.path.join(sprite_dir, f"{a}.png"))
-                    dir_path = os.path.join(sprite_dir, a)
-                    dir_has_png = os.path.isdir(dir_path) and any(
-                        f.endswith('.png') for f in os.listdir(dir_path)
-                    )
-                    if png_exists or dir_has_png:
-                        mapped = ANIMATION_MAPPING.get(a, a)
-                        if mapped not in valid_poses:
-                            valid_poses.append(mapped)
-
-                # Fallback: scan directory when sheet definition has no animations list
-                if not valid_poses and not raw_anims:
-                    sprite_dir = os.path.join(INPUT_SPRITES, item_path)
-                    if os.path.isdir(sprite_dir):
-                        for entry in sorted(os.listdir(sprite_dir)):
-                            anim_name = entry[:-4] if entry.endswith('.png') else entry
-                            if anim_name in SKIP_ANIMATIONS:
-                                continue
-                            full_entry = os.path.join(sprite_dir, entry)
-                            is_anim_png = entry.endswith('.png') and anim_name in ANIMATION_MAPPING or anim_name in set(ANIMATION_MAPPING.values())
-                            is_anim_dir = os.path.isdir(full_entry) and any(
-                                f.endswith('.png') for f in os.listdir(full_entry)
-                            ) and anim_name not in ('bg', 'fg')
-                            if is_anim_png or is_anim_dir:
-                                mapped = ANIMATION_MAPPING.get(anim_name, anim_name)
-                                if mapped not in valid_poses:
-                                    valid_poses.append(mapped)
-                return valid_poses
-
-            # Recolor mapping
-            recolors = data.get('recolors', {})
-            material_cat = recolors.get('material', 'all')
-            # Infer material for weapon subtypes that have no recolors definition
-            if material_cat == 'all' and type_name in ('weapon_sword', 'weapon_blunt', 'weapon_polearm'):
-                material_cat = 'metal'
-            elif material_cat == 'all' and type_name == 'weapon_ranged':
-                material_cat = 'cloth'
-            palettes = [material_cat] if material_cat == 'all' else [material_cat, 'all']
-            materials = {
-                "primary": {
-                    "name": material_cat.title(),
-                    "palettes": palettes
-                }
-            }
-            
-            FALLBACK_COLORS = {
-                "body": "ivory", "hair": "orange", "metal": "iron",
-                "eye": "brown", "cloth": "white", "all": "white",
-            }
-            default_color = FALLBACK_COLORS.get(material_cat, "white")
-
-            # For body, we might need to split it
-            if type_name == "body" and isinstance(data.get("layer_1"), dict) and any(bt in data["layer_1"] for bt in ["male", "female", "muscular", "pregnant", "teen", "child"]):
-                # Split into male, female, etc.
-                is_base_body = (file == "body.json")
-                for body_type in ["male", "female", "muscular", "pregnant", "teen", "child"]:
-                    if body_type in data["layer_1"]:
-                        item_slug = body_type if is_base_body else f"{file.replace('.json', '')}_{body_type}"
-                        item_id = f"{v_type}.{type_name}.{item_slug}"
-                        sub_path = data["layer_1"][body_type].rstrip('/')
-                        
-                        # Filter poses for this specific body type
-                        body_poses = filter_poses(sub_path)
-                        
-                        # Find credits for this specific file
-                        item_credits = {"authors": [], "licenses": [], "urls": [], "notes": ""}
-                        for cred in data.get('credits', []):
-                            if cred.get('file') in sub_path:
-                                item_credits = {
-                                    "authors": cred.get('authors', []),
-                                    "licenses": cred.get('licenses', []),
-                                    "urls": cred.get('urls', []),
-                                    "notes": cred.get('notes', "")
-                                }
-                                break
-                        
-                        body_variant = get_item_variant(sub_path)
-                        sample = find_sample_sprite(sub_path)
-                        body_color = (detect_sprite_color(sample, colors, material_cat) if sample else None) or default_color
-                        packed[v_type][type_name][item_slug] = {
-                            "id": item_id,
-                            "name": f"{body_type.title()} Body" if is_base_body else f"{data.get('name', item_slug.title())} ({body_type.title()})",
-                            "path": sub_path,
-                            "group": type_name,
-                            "actAs": f"anatomy.body.{body_type}" if not is_base_body else None,
-                            "variant": body_variant,
-                            "variants": [],
-                            "layers": { "fg": { "z": data["layer_1"].get('zPos', 10) } },
-                            "poses": body_poses,
-                            "materials": materials,
-                            "colors": { "primary": body_color },
-                            "preview": get_preview_image(sub_path, raw_anims, type_name),
-                            **item_credits
+                    data = json.load(json_file)
+                    id_parts = data["id"].split(".")
+                    current_dict = result_dict
+                    for part in id_parts[:-1]:
+                        current_dict = current_dict.setdefault(part, {})
+                    if full is True:
+                        try:
+                            data['preview'] = get_preview_image(data, input_path)
+                        except Exception:
+                            data['preview'] = ''
+                        data['name'] = data['name'].replace('_', ' ').title()
+                        current_dict[id_parts[-1]] = data
+                    else:
+                        current_dict[id_parts[-1]] = {
+                            "id": data.get("id"),
+                            "notes": data.get("notes"),
+                            "authors": data.get("authors"),
+                            "licenses": data.get("licenses"),
+                            "urls": data.get("urls")
                         }
-                continue
+                except Exception as error:
+                    print(filepath)
+                    print(error)
 
-            # Regular item
-            item_name = data.get('name', file.replace('.json', '').replace('_', ' ').title())
-            item_slug = file.replace('.json', '')
-            item_id = f"{v_type}.{type_name}.{item_slug}"
-            
-            # Base path - try to find common prefix in layers
-            base_path = ""
-            conditions = {}
-            layers = {}
-            
-            l1 = data.get('layer_1', {})
-            if isinstance(l1, dict):
-                # Check for conditions
-                body_types = ["male", "female", "muscular", "pregnant", "teen", "child"]
-                found_conditions = False
-                for bt in body_types:
-                    if bt in l1:
-                        # Path is like "legs/cuffed/male/"
-                        p = l1[bt].rstrip('/')
-                        # Common part? 
-                        if not base_path:
-                            base_path = os.path.dirname(p)
-                        
-                        suffix = os.path.basename(p)
-                        conditions[f"anatomy.body.{bt}"] = suffix
-                        found_conditions = True
-                
-                if found_conditions:
-                    layers["fg"] = {
-                        "z": l1.get('zPos', 20),
-                        "conditions": conditions
-                    }
-                else:
-                    # Universal layer (no conditions)
-                    if 'file' in l1:
-                         base_path = l1['file'].rstrip('/')
-                    elif isinstance(l1, str):
-                         base_path = l1.rstrip('/')
-                    layers["fg"] = { "z": l1.get('zPos', 20) }
-            
-            # For regular items, we'll check existence relative to base_path if no conditions,
-            # or just assume the first condition is representative for simplicity.
-            # Ideally we'd check ALL conditions, but that's complex.
-            check_path = base_path
-            if conditions:
-                 # Take the first condition's full path
-                 first_bt = next(iter(conditions)) # anatomy.body.male
-                 bt_slug = first_bt.split('.')[-1]
-                 if bt_slug in l1:
-                      check_path = l1[bt_slug].rstrip('/')
 
-            item_poses = filter_poses(check_path)
+result_dict = {}
+merge_data(input_path, result_dict, full=True)
 
-            # Credits
-            item_credits = {"authors": [], "licenses": [], "urls": [], "notes": ""}
-            if data.get('credits'):
-                c = data['credits'][0]
-                item_credits = {
-                    "authors": c.get('authors', []),
-                    "licenses": c.get('licenses', []),
-                    "urls": c.get('urls', []),
-                    "notes": c.get('notes', "")
-                }
-
-            multi_variants = get_multi_variants(check_path)
-            if multi_variants:
-                # Pre-colored variants: one item, user picks color via variant selector
-                packed[v_type][type_name][item_slug] = {
-                    "id": item_id,
-                    "name": item_name,
-                    "path": base_path,
-                    "group": type_name,
-                    "actAs": None,
-                    "variant": multi_variants[0],
-                    "variants": multi_variants,
-                    "layers": layers,
-                    "poses": item_poses,
-                    "materials": {},
-                    "colors": {},
-                    "preview": "",
-                    **item_credits
-                }
-            else:
-                item_variant = get_item_variant(check_path)
-                sample = find_sample_sprite(check_path)
-                default_color = (detect_sprite_color(sample, colors, material_cat) if sample else None) or default_color
-
-                packed[v_type][type_name][item_slug] = {
-                    "id": item_id,
-                    "name": item_name,
-                    "path": base_path,
-                    "group": type_name,
-                    "actAs": None,
-                    "variant": item_variant,
-                    "variants": [],
-                    "layers": layers,
-                    "poses": item_poses,
-                    "materials": materials,
-                    "colors": { "primary": default_color },
-                    "preview": get_preview_image(base_path, raw_anims, type_name),
-                    **item_credits
-                }
-
-    with open(OUTPUT_PACKED, 'w') as f:
-        json.dump(packed, f, indent=2)
-    print("Done!")
-
-if __name__ == "__main__":
-    main()
+with open(output_path, 'w') as result_file:
+    json.dump(result_dict, result_file, indent=2)

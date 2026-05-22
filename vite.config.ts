@@ -12,5 +12,11 @@ export default defineConfig({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
+  },
+  server: {
+    port: 5177,
+    watch: {
+      ignored: ['**/dist/**', '**/public/**', '**/node_modules/**']
+    }
   }
 })
