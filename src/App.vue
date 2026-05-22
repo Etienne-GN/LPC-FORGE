@@ -11,16 +11,16 @@ let tab = ref('character');
 
 <template>
   <div class="flex flex-col h-screen bg-zinc-900 scrollbar-thumb-amber-950 scrollbar-track-transparent scrollbar-thumb-rounded">
-    <header class="flex bg-zinc-900 text-zinc-300 h-16 px-4 items-center gap-4 border-b border-zinc-800">
-      <div class="flex gap-2 w-96 items-center text-zinc-400">
+    <header class="flex bg-zinc-900 text-zinc-300 h-16 px-4 items-center gap-2 md:gap-4 border-b border-zinc-800">
+      <div class="flex gap-2 items-center text-zinc-400 shrink-0">
         <img :src="'logo.png'" class="border-zinc-600 border-2 rounded-full h-11 bg-zinc-800">
-        <h1>LPC Forge</h1>
+        <h1 class="hidden md:block">LPC Forge</h1>
       </div>
       <div class="grow flex gap-2 justify-center">
-        <button @click="tab = 'character'" class="p-1 px-2 rounded" :class="{'bg-zinc-700': tab == 'character', 'hover:bg-zinc-800': tab != 'character'}"><i class="mdi mdi-human"></i> Character</button>
-        <button @click="tab = 'horse'" class="p-1 px-2 rounded" :class="{'bg-zinc-700': tab == 'horse', 'hover:bg-zinc-800': tab != 'horse'}"><i class="mdi mdi-horse"></i> Horse</button>
+        <button @click="tab = 'character'" class="p-1 px-2 rounded" :class="{'bg-zinc-700': tab == 'character', 'hover:bg-zinc-800': tab != 'character'}"><i class="mdi mdi-human"></i> <span class="hidden md:inline">Character</span></button>
+        <button @click="tab = 'horse'" class="p-1 px-2 rounded" :class="{'bg-zinc-700': tab == 'horse', 'hover:bg-zinc-800': tab != 'horse'}"><i class="mdi mdi-horse"></i> <span class="hidden md:inline">Horse</span></button>
       </div>
-      <div class="text-right w-96">
+      <div class="text-right shrink-0">
         <a href="https://github.com/vitruvianstudio" target="_blank" class="text-zinc-400 hover:text-zinc-200 text-2xl" title="Based on Vitruvian Studio"><i class="mdi mdi-github"></i></a>
       </div>
     </header>
