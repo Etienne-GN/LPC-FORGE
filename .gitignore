@@ -30,5 +30,4 @@ coverage
 *.tsbuildinfo
 
 /bin/Ramps.json
-/public/spritesheets
-/src/data/packed.json
+saves.db

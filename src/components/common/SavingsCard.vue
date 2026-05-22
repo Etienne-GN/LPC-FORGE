@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {ref} from 'vue'
+import {ref, onMounted} from 'vue'
 
 import UIButton from '@/components/ui/Button.vue'
 
@@ -7,11 +7,16 @@ const props = defineProps(['type', 'collection', 'renderer'])
 const emit = defineEmits(['loaded'])
 
 const file = ref();
-const savings = ref();
-savings.value = getSavings();
+const savings = ref<Record<string, any>>({});
 
+onMounted(() => loadSavings())
 
-function onSave(file: any = null) {
+async function loadSavings() {
+  const res = await fetch(`/api/saves/${props.type}`)
+  savings.value = await res.json()
+}
+
+async function onSave(file: any = null) {
   let item;
   let preview;
 
@@ -23,49 +28,34 @@ function onSave(file: any = null) {
     preview = file.preview;
   }
 
-  const data: any = getSavings();
   const name: string | null = prompt('Save name', file ? file.fileName : '');
 
   if (!name) {
     return;
   }
 
-  if (data[name]) {
+  if (savings.value[name]) {
     if (!confirm("Name already exists, do you want to override?")) {
       return;
     }
   }
 
-  data[name] = {
-    data: item,
-    preview: preview
-  };
+  await fetch(`/api/saves/${props.type}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, data: item, preview })
+  })
 
-  localStorage.setItem(`${props.type}-savings`, JSON.stringify(data));
-  savings.value = getSavings();
+  await loadSavings()
 }
 
-function onDelete(key:any) {
-  const data: any = getSavings();
-
+async function onDelete(key: any) {
   if (!confirm(`Do you really want to remove "${key}"?`)) {
     return;
   }
 
-  delete data[key];
-  localStorage.setItem(`${props.type}-savings`, JSON.stringify(data));
-  savings.value = getSavings();
-}
-
-function getSavings() {
-  let loaded = localStorage.getItem(`${props.type}-savings`);
-  let data = {};
-
-  if (loaded) {
-    data = JSON.parse(loaded);
-  }
-
-  return data;
+  await fetch(`/api/saves/${props.type}/${encodeURIComponent(key)}`, { method: 'DELETE' })
+  await loadSavings()
 }
 
 function getPreviewImage() {
@@ -83,8 +73,8 @@ function getPreviewImage() {
 
   previewCanvas.getContext('2d')?.drawImage(
       canvas,
-      0, // frame
-      128, // direction
+      0,
+      128,
       sourceSize,
       sourceSize,
       0,
@@ -96,12 +86,12 @@ function getPreviewImage() {
   return previewCanvas.toDataURL();
 }
 
-async function onLoad(name:any) {
+async function onLoad(name: any) {
   await props.collection.initSelected(savings.value[name].data);
   emit('loaded')
 }
 
-function onExportSaving(name:any) {
+function onExportSaving(name: any) {
   const link = document.createElement('a');
   link.download = name + '.vit';
   link.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(savings.value[name]));
@@ -113,10 +103,7 @@ function onExportCurrent() {
   const item = props.collection.dumpSelected();
   const preview = getPreviewImage();
 
-  const data = {
-    data: item,
-    preview: preview
-  };
+  const data = { data: item, preview };
 
   const link = document.createElement('a');
   link.download = 'unnamed.vit';
@@ -130,9 +117,9 @@ function onImportSaving() {
 }
 
 function onFileSelected(event: any) {
-  const file = event.target.files[0];
+  const f = event.target.files[0];
 
-  if (!file) {
+  if (!f) {
     return;
   }
 
@@ -141,7 +128,7 @@ function onFileSelected(event: any) {
   reader.onload = (e: any) => {
     try {
       const content = JSON.parse(e.target.result);
-      content.fileName = file.name.replace('.vit', '');
+      content.fileName = f.name.replace('.vit', '');
       props.collection.initSelected(content.data);
       emit('loaded')
 
@@ -151,7 +138,7 @@ function onFileSelected(event: any) {
     }
   };
 
-  reader.readAsText(file);
+  reader.readAsText(f);
 }
 </script>
 
@@ -172,14 +159,12 @@ function onFileSelected(event: any) {
       <img :src="value.preview" class="bg-zinc-700 rounded">
       <div class="flex-grow">
         <div class="flex gap-2 justify-end">
-          <UIButton @click="onExportSaving(key)" :small="true" ui="secondary-square" icon="export"
-                    title="Export"></UIButton>
+          <UIButton @click="onExportSaving(key)" :small="true" ui="secondary-square" icon="export" title="Export"></UIButton>
           <UIButton @click="onDelete(key)" :small="true" ui="secondary-square" icon="delete" title="Delete"></UIButton>
           <UIButton @click="onLoad(key)" :small="true" ui="primary-square" icon="folder-open" title="Open"></UIButton>
         </div>
         {{ key }}
       </div>
-
     </div>
   </div>
 </template>
